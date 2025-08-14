@@ -106,8 +106,10 @@ class MainWindow(QMainWindow):
     # --------- Modes & zoom ----------
     def set_mode(self, mode: str):
         self.mode = mode
-        try: self.actions[mode].setChecked(True)
-        except Exception: pass
+        try: 
+            self.actions[mode].setChecked(True)
+        except Exception: 
+            pass
         if mode == Mode.SELECT:
             self.view.setCursor(Qt.ArrowCursor)
             self.view.setDragMode(EditorView.RubberBandDrag)
@@ -117,21 +119,31 @@ class MainWindow(QMainWindow):
             self.view.setDragMode(EditorView.NoDrag)
         self.statusBar().showMessage(f"Mode: {mode}")
         if mode != Mode.ADD_LINK:
-            self.pending_link_src = None; self.view.clear_temp_link()
+            self.pending_link_src = None
+            self.view.clear_temp_link()
 
     def keyPressEvent(self, event):
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
-            self.delete_selected(); event.accept(); return
+            self.delete_selected()
+            event.accept()
+            return
+        if event.key() == Qt.Key_Escape and self.mode == Mode.ADD_LINK and self.pending_link_src is not None:
+            self.cancel_link_creation()
+            event.accept()
+            return
         super().keyPressEvent(event)
 
     def zoom_in(self):
-        self._scale = min(self._scale * 1.2, 5.0); self.view.scale(1.2, 1.2)
+        self._scale = min(self._scale * 1.2, 5.0)
+        self.view.scale(1.2, 1.2)
 
     def zoom_out(self):
-        self._scale = max(self._scale / 1.2, 0.2); self.view.scale(1/1.2, 1/1.2)
+        self._scale = max(self._scale / 1.2, 0.2)
+        self.view.scale(1/1.2, 1/1.2)
 
     def zoom_reset(self):
-        self._scale = 1.0; self.view.resetTransform()
+        self._scale = 1.0
+        self.view.resetTransform()
 
     def snap(self, p: QPointF) -> QPointF:
         return QPointF(round(p.x()/GRID_SIZE)*GRID_SIZE, round(p.y()/GRID_SIZE)*GRID_SIZE)
@@ -389,6 +401,18 @@ class MainWindow(QMainWindow):
             painter = QPainter(gen); self.scene.render(painter, target=rb, source=rb); painter.end()
         else:
             QMessageBox.warning(self, "Export", f"Unsupported format: {kind}")
+
+    def cancel_link_creation(self):
+        """Při tvorbě spojení mezi objekty se klávesou ESC předběžně ukončí"""
+        self.pending_link_src = None
+        # zruš náhledovou čáru
+        if hasattr(self, "view") and hasattr(self.view, "clear_temp_link"):
+            self.view.clear_temp_link()
+        # vyčisti stavový řádek
+        sb = getattr(self, "statusBar", None)
+        if callable(sb):
+            self.statusBar().clearMessage()
+        # self.set_mode(Mode.SELECT) - pokud bychom chtěli přejít do select režimu
 
 def main():
     load_dotenv(find_dotenv(), override=True)

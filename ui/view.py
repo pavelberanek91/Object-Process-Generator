@@ -120,3 +120,12 @@ class EditorView(QGraphicsView):
             self.temp_link.setAcceptedMouseButtons(Qt.NoButton)
             self.scene().addItem(self.temp_link)
         self.temp_link.setPath(path)
+
+    def keyPressEvent(self, event):
+        if (event.key() == Qt.Key_Escape 
+                and self.app.mode == Mode.ADD_LINK 
+                and self.app.pending_link_src is not None):
+            self.app.cancel_link_creation()
+            event.accept()
+            return
+        super().keyPressEvent(event)

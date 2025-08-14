@@ -5,6 +5,11 @@ GRID_SIZE = 25
 NODE_W, NODE_H = 140, 70
 STATE_W, STATE_H = 100, 28
 
+# konstanty pro resize prvků
+HANDLE_SIZE = 10          # velikost táhla v px (ignoruje zoom)
+MIN_NODE_W  = 80          # minimální šířka uzlu při resize
+MIN_NODE_H  = 50          # minimální výška uzlu při resize
+
 LINK_TYPES = [
     # procedural
     "input", "consumption", "output", "result", "effect", "agent", "instrument",
