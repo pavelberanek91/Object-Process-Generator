@@ -1,5 +1,7 @@
 from __future__ import annotations
 import json, sys
+import os, re
+import math
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Dict, Any, Tuple
 
@@ -8,9 +10,14 @@ from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (
     QAction,
     QActionGroup,
+    QColor,
+    QIcon,
     QImage,
     QKeySequence,
     QPainter,
+    QPainterPath,
+    QPen,
+    QPixmap
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -21,6 +28,7 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGraphicsItem,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMainWindow,
@@ -41,6 +49,7 @@ from graphics.grid import GridScene
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
 from graphics.link import LinkItem
 from ui.view import EditorView
+from ui.tabs import RenameableTabBar
 from opl import parser as opl_parser
 from opl import generator as opl_generator
 from ai.nl2opl import nl_to_opl
@@ -64,6 +73,9 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget(self)
         self.setCentralWidget(self.tabs)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        bar = RenameableTabBar(self.tabs)
+        self.tabs.setTabBar(bar)
+        bar.renameRequested.connect(self._rename_tab)
 
         # Stavové proměnné
         self.mode = Mode.SELECT
@@ -93,12 +105,22 @@ class MainWindow(QMainWindow):
             if group: group.addAction(act)
             return act
 
+        def add_icon_btn(icon, tooltip, slot, checkable=False, group=None):
+            act = QAction(icon, "", self)
+            act.setToolTip(tooltip); act.setStatusTip(tooltip)
+            act.triggered.connect(slot); act.setCheckable(checkable)
+            tb.addAction(act)
+            if group: group.addAction(act)
+            return act
+
         file_menu = QMenu("File", self)
         file_menu.addAction("New OPD", lambda: self._new_canvas())
         file_menu.addSeparator()
         file_menu.addAction("Export OPD",  lambda: self.save_json())
-        file_menu.addAction("Import OPD",  lambda: self.load_json())
+        file_menu.addAction("Import OPD (Current Tab)", self.load_json_into_current)
+        file_menu.addAction("Import OPD (New Tab)", self.load_json_into_new_canvas)
         file_menu.addSeparator()
+        file_menu.addAction("Rename OPD", lambda: self._rename_tab(self.tabs.currentIndex()))
         file_menu.addAction("Close Tab", lambda: self._close_current_tab())
         file_menu.addSeparator()
         file_menu.addAction("Exit", QApplication.instance().quit)
@@ -106,46 +128,13 @@ class MainWindow(QMainWindow):
         # act_exit.setShortcut(QKeySequence.Quit)   # Ctrl+Q na Win/Linux, ⌘Q na macOS TODO: nefunguje
         # act_exit.triggered.connect(QApplication.instance().quit)
         # file_menu.addAction(act_exit)
-        
         file_btn = QToolButton()
         file_btn.setText("File")
         file_btn.setMenu(file_menu)
         file_btn.setPopupMode(QToolButton.InstantPopup)
         file_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(file_btn)
- 
 
-        tb.addSeparator()
-        act_select = QAction("Select/Move", self)
-        act_select.setCheckable(True)
-        tb.addAction(act_select)
-        act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
-
-        tb.addSeparator()
-        act_obj  = add_btn("Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT), True)
-        tb.addSeparator()
-        act_proc = add_btn("Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
-        tb.addSeparator()
-        act_state= add_btn("Add State",   lambda: self.set_mode(Mode.ADD_STATE), True)
-        tb.addSeparator()
-        act_link = add_btn("Add Link",    lambda: self.set_mode(Mode.ADD_LINK), True)
-
-        group = QActionGroup(self); group.setExclusive(True)
-        for a in (act_select, act_obj, act_proc, act_state, act_link): group.addAction(a)
-        act_select.setChecked(True)
-        self.actions = {Mode.SELECT:act_select, Mode.ADD_OBJECT:act_obj, Mode.ADD_PROCESS:act_proc,
-                        Mode.ADD_STATE:act_state, Mode.ADD_LINK:act_link}
-
-        tb.addSeparator()
-        add_btn("Delete", self.delete_selected)
-        tb.addSeparator()
-        add_btn("Clear All", self.clear_all)
-        tb.addSeparator()
-        add_btn("Zoom +", self.zoom_in)
-        tb.addSeparator()
-        add_btn("Zoom -", self.zoom_out)
-        tb.addSeparator()
-        add_btn("Reset Zoom", self.zoom_reset)
         tb.addSeparator()
         add_btn("Create OPL", self.import_opl_dialog)
         tb.addSeparator()
@@ -162,6 +151,62 @@ class MainWindow(QMainWindow):
         export_btn.setPopupMode(QToolButton.InstantPopup)
         export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(export_btn)
+
+        # tb.addSeparator()
+        # act_select = QAction("Select/Move", self)
+        # act_select.setCheckable(True)
+        # tb.addAction(act_select)
+        # act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
+        # tb.addSeparator()
+        # act_obj  = add_btn("Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT), True)
+        # tb.addSeparator()
+        # act_proc = add_btn("Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
+        # tb.addSeparator()
+        # act_state= add_btn("Add State",   lambda: self.set_mode(Mode.ADD_STATE), True)
+        # tb.addSeparator()
+        # act_link = add_btn("Add Link",    lambda: self.set_mode(Mode.ADD_LINK), True)
+
+        act_select = QAction(self._icon_shape("cursor"), "", self)
+        act_select.setToolTip("Select/Move")
+        act_select.setCheckable(True)
+        tb.addAction(act_select)
+        act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
+
+        tb.addSeparator()
+        act_obj  = add_icon_btn(self._icon_shape("object"), "Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT),  True)
+        tb.addSeparator()
+        act_proc = add_icon_btn(self._icon_shape("process"), "Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
+        tb.addSeparator()
+        act_state = add_icon_btn(self._icon_shape("state"), "Add State",    lambda: self.set_mode(Mode.ADD_STATE),   True)
+        tb.addSeparator()
+        act_link = add_icon_btn(self._icon_shape("link"),  "Add Link",     lambda: self.set_mode(Mode.ADD_LINK),    True)
+
+        group = QActionGroup(self)
+        group.setExclusive(True)
+        for a in (act_select, act_obj, act_proc, act_state, act_link):
+            group.addAction(a)
+        act_select.setChecked(True)
+        self.actions = {
+            Mode.SELECT:act_select,
+            Mode.ADD_OBJECT:act_obj,
+            Mode.ADD_PROCESS:act_proc,
+            Mode.ADD_STATE:act_state,
+            Mode.ADD_LINK:act_link
+        }
+
+        # Ostatní (necheckable)
+        tb.addSeparator()
+        add_icon_btn(self._icon_std(QStyle.SP_TrashIcon), "Delete (Del)", self.delete_selected)
+        tb.addSeparator()
+        add_icon_btn(self._icon_std(QStyle.SP_DialogDiscardButton), "Clear All", self.clear_all)
+        tb.addSeparator()
+        add_icon_btn(self._icon_shape("zoom_in"),  "Zoom In (Ctrl + Wheel)",  self.zoom_in)
+        tb.addSeparator()
+        add_icon_btn(self._icon_shape("zoom_out"), "Zoom Out (Ctrl + Wheel)", self.zoom_out)
+        tb.addSeparator()
+        # Reset – zkusíme systémovou, případně použij _icon_std(QStyle.SP_BrowserReload)
+        reset_icon = self._icon_std(QStyle.SP_DialogResetButton) or self._icon_std(QStyle.SP_BrowserReload)
+        add_icon_btn(reset_icon, "Reset Zoom", self.zoom_reset)
 
     def _new_canvas(self, title: str | None = None):
         scene = GridScene(self)
@@ -189,6 +234,14 @@ class MainWindow(QMainWindow):
         self.view.clear_overlays()
         self.pending_link_src = None
 
+    def _current_tab_title(self) -> str:
+        """Vrátí text aktivní záložky nebo fallback."""
+        idx = self.tabs.currentIndex() if hasattr(self, "tabs") else -1
+        if idx >= 0:
+            t = self.tabs.tabText(idx).strip()
+            return t if t else "Canvas"
+        return "Canvas"
+
     def _on_tab_changed(self, idx: int):
         if idx < 0:
             return
@@ -202,6 +255,17 @@ class MainWindow(QMainWindow):
         # když nic nezbyde, můžeš automaticky založit prázdný canvas:
         if self.tabs.count() == 0:
             self._new_canvas("Canvas 1")
+
+    def _rename_tab(self, idx: int):
+        # bezpečnostní kontrola
+        if idx < 0 or idx >= self.tabs.count():
+            return
+        current = self.tabs.tabText(idx)
+        text, ok = QInputDialog.getText(self, "Rename OPD", "New name:", text=current)
+        if ok:
+            new = text.strip()
+            if new:
+                self.tabs.setTabText(idx, new)
 
     def create_prop_dock(self):
         dock = QDockWidget("Properties", self); panel = QWidget(); form = QFormLayout(panel)
@@ -223,6 +287,70 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
     # --------- Modes & zoom ----------
+    # Továrna na ikonky
+    def _icon_shape(self, kind: str, size: int = 22) -> QIcon:
+        """Vykreslí jednoduché vektorové ikonky (object/process/state/link/zoom+/zoom-)."""
+        pm = QPixmap(size, size)
+        pm.fill(Qt.transparent)
+        p = QPainter(pm)
+        p.setRenderHint(QPainter.Antialiasing)
+        pen = QPen(Qt.black, 2)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+
+        if kind == "cursor":
+            path = QPainterPath()
+            path.moveTo(4, 3)
+            path.lineTo(size - 8, size // 2)
+            path.lineTo(size - 12, size // 2)
+            path.lineTo(size - 4, size - 5)
+            path.lineTo(size - 8, size - 3)
+            path.lineTo(size - 16, size // 2 + 2)
+            path.lineTo(4, 3)
+            p.setBrush(Qt.black)
+            p.drawPath(path)
+
+        if kind == "object":
+            r = QRectF(3, 4, size - 6, size - 8)
+            p.drawRoundedRect(r, 4, 4)
+
+        elif kind == "process":
+            r = QRectF(3, 4, size - 6, size - 8)
+            p.drawEllipse(r)
+
+        elif kind == "state":
+            r = QRectF(5, 7, size - 10, size - 14)
+            p.drawRoundedRect(r, 4, 4)
+
+        elif kind == "link":
+            path = QPainterPath(QPointF(4, size - 6))
+            path.lineTo(size - 8, 6)
+            p.drawPath(path)
+            # šipka
+            ax, ay = size - 8, 6
+            bx, by = size - 14, 12
+            ang = math.atan2(ay - by, ax - bx)
+            L = 7
+            p.drawLine(ax, ay, ax - L * math.cos(ang + math.pi / 6), ay - L * math.sin(ang + math.pi / 6))
+            p.drawLine(ax, ay, ax - L * math.cos(ang - math.pi / 6), ay - L * math.sin(ang - math.pi / 6))
+
+        elif kind in ("zoom_in", "zoom_out"):
+            # lupa
+            cx, cy, r = size / 2 - 3, size / 2 - 3, size / 2 - 6
+            p.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
+            p.drawLine(cx + r - 1, cy + r - 1, size - 3, size - 3)  # držátko
+            # plus/minus
+            p.drawLine(cx - r / 2 + 1, cy, cx + r / 2 - 1, cy)
+            if kind == "zoom_in":
+                p.drawLine(cx, cy - r / 2 + 1, cx, cy + r / 2 - 1)
+
+        p.end()
+        return QIcon(pm)
+
+    def _icon_std(self, sp):
+        """Nativní systémová ikonka (QStyle)."""
+        return self.style().standardIcon(sp)
+
     def set_mode(self, mode: str):
         self.mode = mode
         try: 
@@ -422,6 +550,14 @@ class MainWindow(QMainWindow):
         layout.addLayout(row); dlg.setLayout(layout); dlg.resize(600, 400); dlg.exec()
 
     # --------- Persistence ----------
+    def _safe_base_filename(self, title: str | None = None) -> str:
+        """Z názvu tabu udělá bezpečný základ pro soubor (bez přípon)."""
+        base = (title or self._current_tab_title()).strip()
+        # zakázané znaky a přebytečné mezery nahradíme podtržítkem
+        base = re.sub(r'[\\/*?:"<>|]+', "_", base)
+        base = re.sub(r"\s+", "_", base)
+        return base or "Canvas"
+
     def to_dict(self) -> Dict[str, Any]:
         nodes: List[DiagramNode] = []; links: List[DiagramLink] = []
         for it in self.scene.items():
@@ -491,19 +627,39 @@ class MainWindow(QMainWindow):
                 f"{invalid} neplatných vazeb bylo při načítání přeskočeno.")
 
     def save_json(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Save Diagram", "diagram.json", "JSON (*.json)")
-        if not path: return
-        with open(path, "w", encoding="utf-8") as f: json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
+        base = self._safe_base_filename()
+        path, _ = QFileDialog.getSaveFileName(self, "Save OPD (JSON)", f"{base}.json", "JSON (*.json)")
+        if not path: 
+            return
+        with open(path, "w", encoding="utf-8") as f: 
+            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
 
-    def load_json(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Load Diagram", "", "JSON (*.json)")
-        if not path: return
-        with open(path, "r", encoding="utf-8") as f: data = json.load(f)
+    def load_json_into_current(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Import OPD (current tab)", "", "JSON (*.json)")
+        if not path: 
+            return
+        with open(path, "r", encoding="utf-8") as f: 
+            data = json.load(f)
+        self.from_dict(data)
+
+    def load_json_into_new_canvas(self):
+        """Načte JSON do NOVÉ záložky (nový canvas)."""
+        path, _ = QFileDialog.getOpenFileName(self, "Import OPD (new tab)", "", "JSON (*.json)")
+        if not path:
+            return
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # název tabu z názvu souboru
+        base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
+        self._new_canvas(base)  # aktivuje novou scénu a přepne na ni
         self.from_dict(data)
 
     def export_image(self, kind: str="png"):
+        base = self._safe_base_filename()
+
         if kind in "jpg":
-            path, _ = QFileDialog.getSaveFileName(self, "Export JPG", "diagram.jpg", "JPEG (*.jpg *.jpeg)")
+            path, _ = QFileDialog.getSaveFileName(self, "Export JPG", f"{base}.jpg", "JPEG (*.jpg *.jpeg)")
             if not path:
                 return
             rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
@@ -513,8 +669,9 @@ class MainWindow(QMainWindow):
             self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
             painter.end()
             img.save(path, "JPG", 95)
+
         elif kind == "png":
-            path, _ = QFileDialog.getSaveFileName(self, "Export PNG", "diagram.png", "PNG (*.png)")
+            path, _ = QFileDialog.getSaveFileName(self, "Export PNG", f"{base}.png", "PNG (*.png)")
             if not path: 
                 return
             rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
@@ -524,8 +681,9 @@ class MainWindow(QMainWindow):
             self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
             painter.end()
             img.save(path)
+
         elif kind == "svg":
-            path, _ = QFileDialog.getSaveFileName(self, "Export SVG", "diagram.svg", "SVG (*.svg)")
+            path, _ = QFileDialog.getSaveFileName(self, "Export SVG", f"{base}.svg", "SVG (*.svg)")
             if not path: 
                 return
             rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
@@ -536,6 +694,7 @@ class MainWindow(QMainWindow):
             painter = QPainter(gen)
             self.scene.render(painter, target=rb, source=rb)
             painter.end()
+
         else:
             QMessageBox.warning(self, "Export", f"Unsupported format: {kind}")
 
