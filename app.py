@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QMenu,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QStyle,
     QTabWidget,
     QTextEdit,
@@ -113,6 +114,13 @@ class MainWindow(QMainWindow):
             if group: group.addAction(act)
             return act
 
+        def add_spacing(tb: QToolBar, width: int = 16):
+            spacer = QWidget()
+            spacer.setFixedWidth(width)
+            spacer.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
+            tb.addWidget(spacer)
+            return spacer
+
         file_menu = QMenu("File", self)
         file_menu.addAction("New OPD", lambda: self._new_canvas())
         file_menu.addSeparator()
@@ -140,6 +148,7 @@ class MainWindow(QMainWindow):
         tb.addSeparator()
         add_btn("Generate OPL", self.open_nl_to_opl_dialog)
         
+        
         tb.addSeparator()
         export_menu = QMenu("Image", self)
         export_menu.addAction("Save as JPG",  lambda: self.export_image("jpg"))
@@ -165,6 +174,8 @@ class MainWindow(QMainWindow):
         # act_state= add_btn("Add State",   lambda: self.set_mode(Mode.ADD_STATE), True)
         # tb.addSeparator()
         # act_link = add_btn("Add Link",    lambda: self.set_mode(Mode.ADD_LINK), True)
+
+        add_spacing(tb, 16)
 
         act_select = QAction(self._icon_shape("cursor"), "", self)
         act_select.setToolTip("Select/Move")
