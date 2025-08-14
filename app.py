@@ -6,15 +6,33 @@ from typing import Optional, List, Dict, Any, Tuple
 from dotenv import load_dotenv, find_dotenv
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (
-    QPainter,
     QAction,
     QActionGroup,
-    QImage
+    QImage,
+    QKeySequence,
+    QPainter,
 )
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QGraphicsItem, QDockWidget, QWidget, QFormLayout,
-    QLineEdit, QLabel, QComboBox, QPushButton, QToolBar,
-    QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QStyle
+    QApplication,
+    QComboBox,
+    QDialog,
+    QDockWidget,
+    QFileDialog,
+    QFormLayout,
+    QGraphicsItem,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMainWindow,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QStyle,
+    QTextEdit,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
 from PySide6.QtSvg import QSvgGenerator
 from constants import *
@@ -60,8 +78,25 @@ class MainWindow(QMainWindow):
             if group: group.addAction(act)
             return act
 
-        act_select = QAction("Select/Move", self); act_select.setCheckable(True)
-        tb.addAction(act_select); act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
+        file_menu = QMenu("File", self)
+        file_menu.addAction("Export ODT",  lambda: self.save_json())
+        file_menu.addAction("Import ODT",  lambda: self.load_json())
+        act_exit = QAction("Exit", self)
+        act_exit.setShortcut(QKeySequence.Quit)   # Ctrl+Q na Win/Linux, ⌘Q na macOS
+        act_exit.triggered.connect(QApplication.instance().quit)
+        file_menu.addAction(act_exit)
+        file_btn = QToolButton()
+        file_btn.setText("File")
+        file_btn.setMenu(file_menu)
+        file_btn.setPopupMode(QToolButton.InstantPopup)
+        file_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        tb.addWidget(file_btn)
+
+        tb.addSeparator()
+        act_select = QAction("Select/Move", self)
+        act_select.setCheckable(True)
+        tb.addAction(act_select)
+        act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
 
         tb.addSeparator()
         act_obj  = add_btn("Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT), True)
@@ -78,18 +113,32 @@ class MainWindow(QMainWindow):
         self.actions = {Mode.SELECT:act_select, Mode.ADD_OBJECT:act_obj, Mode.ADD_PROCESS:act_proc,
                         Mode.ADD_STATE:act_state, Mode.ADD_LINK:act_link}
 
-        tb.addSeparator(); add_btn("Delete", self.delete_selected)
-        tb.addSeparator(); add_btn("Clear All", self.clear_all)
-        tb.addSeparator(); add_btn("Zoom +", self.zoom_in)
-        tb.addSeparator(); add_btn("Zoom -", self.zoom_out)
-        tb.addSeparator(); add_btn("Reset Zoom", self.zoom_reset)
-        tb.addSeparator(); add_btn("Save JSON", self.save_json)
-        tb.addSeparator(); add_btn("Load JSON", self.load_json)
-        tb.addSeparator(); add_btn("Export JPG", lambda: self.export_image("jpg"))
-        tb.addSeparator(); add_btn("Export PNG", lambda: self.export_image("png"))
-        tb.addSeparator(); add_btn("Export SVG", lambda: self.export_image("svg"))
-        tb.addSeparator(); add_btn("Create OPL", self.import_opl_dialog)
-        tb.addSeparator(); add_btn("Generate OPL", self.open_nl_to_opl_dialog)
+        tb.addSeparator()
+        add_btn("Delete", self.delete_selected)
+        tb.addSeparator()
+        add_btn("Clear All", self.clear_all)
+        tb.addSeparator()
+        add_btn("Zoom +", self.zoom_in)
+        tb.addSeparator()
+        add_btn("Zoom -", self.zoom_out)
+        tb.addSeparator()
+        add_btn("Reset Zoom", self.zoom_reset)
+        tb.addSeparator()
+        add_btn("Create OPL", self.import_opl_dialog)
+        tb.addSeparator()
+        add_btn("Generate OPL", self.open_nl_to_opl_dialog)
+        
+        tb.addSeparator()
+        export_menu = QMenu("Image", self)
+        export_menu.addAction("Save as JPG",  lambda: self.export_image("jpg"))
+        export_menu.addAction("Save as PNG",  lambda: self.export_image("png"))
+        export_menu.addAction("Save as SVG",  lambda: self.export_image("svg"))
+        export_btn = QToolButton()
+        export_btn.setText("Image")
+        export_btn.setMenu(export_menu)
+        export_btn.setPopupMode(QToolButton.InstantPopup)
+        export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        tb.addWidget(export_btn)
 
     def create_prop_dock(self):
         dock = QDockWidget("Properties", self); panel = QWidget(); form = QFormLayout(panel)
