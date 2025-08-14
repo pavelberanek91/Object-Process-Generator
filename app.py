@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QStyle,
+    QTabWidget,
     QTextEdit,
     QToolBar,
     QToolButton,
@@ -58,39 +59,61 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("OPM Editor — MVP")
-        self.mode = Mode.SELECT; self._scale = 1.0
+        
+        # Tabs jsou trvalý central widget
+        self.tabs = QTabWidget(self)
+        self.setCentralWidget(self.tabs)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        # Stavové proměnné
+        self.mode = Mode.SELECT
+        self._scale = 1.0
         self.pending_link_src: Optional[QGraphicsItem] = None
-        self.default_link_type = LINK_TYPES[0]; self._suppress_combo = False
+        self.default_link_type = LINK_TYPES[0]
+        self._suppress_combo = False
 
-        self.scene = GridScene(self); self.scene.setSceneRect(-5000, -5000, 10000, 10000)
-        self.view = EditorView(self.scene, self); self.setCentralWidget(self.view)
+        # Založ první canvas (to samo nastaví self.view/self.scene přes _activate_view)
+        self._new_canvas("Canvas 1")
 
-        self.create_toolbar(); self.create_prop_dock()
-        self.scene.selectionChanged.connect(self.sync_selected_to_props)
+        # Toolbary / docky až po vytvoření prvního canvase
+        self.create_toolbar()
+        self.create_prop_dock()
+        #self.scene.selectionChanged.connect(self.sync_selected_to_props)
 
     # --------- UI ----------
     def create_toolbar(self):
-        tb = QToolBar("Tools"); self.addToolBar(Qt.TopToolBarArea, tb)
+        tb = QToolBar("Tools")
+        self.addToolBar(Qt.TopToolBarArea, tb)
 
         def add_btn(title, slot, checkable=False, group=None):
-            act = QAction(title, self); act.triggered.connect(slot); tb.addAction(act)
+            act = QAction(title, self)
+            act.triggered.connect(slot)
+            tb.addAction(act)
             act.setCheckable(checkable)
             if group: group.addAction(act)
             return act
 
         file_menu = QMenu("File", self)
-        file_menu.addAction("Export ODT",  lambda: self.save_json())
-        file_menu.addAction("Import ODT",  lambda: self.load_json())
-        act_exit = QAction("Exit", self)
-        act_exit.setShortcut(QKeySequence.Quit)   # Ctrl+Q na Win/Linux, ⌘Q na macOS
-        act_exit.triggered.connect(QApplication.instance().quit)
-        file_menu.addAction(act_exit)
+        file_menu.addAction("New OPD", lambda: self._new_canvas())
+        file_menu.addSeparator()
+        file_menu.addAction("Export OPD",  lambda: self.save_json())
+        file_menu.addAction("Import OPD",  lambda: self.load_json())
+        file_menu.addSeparator()
+        file_menu.addAction("Close Tab", lambda: self._close_current_tab())
+        file_menu.addSeparator()
+        file_menu.addAction("Exit", QApplication.instance().quit)
+        # act_exit = QAction("Exit", self)
+        # act_exit.setShortcut(QKeySequence.Quit)   # Ctrl+Q na Win/Linux, ⌘Q na macOS TODO: nefunguje
+        # act_exit.triggered.connect(QApplication.instance().quit)
+        # file_menu.addAction(act_exit)
+        
         file_btn = QToolButton()
         file_btn.setText("File")
         file_btn.setMenu(file_menu)
         file_btn.setPopupMode(QToolButton.InstantPopup)
         file_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(file_btn)
+ 
 
         tb.addSeparator()
         act_select = QAction("Select/Move", self)
@@ -139,6 +162,46 @@ class MainWindow(QMainWindow):
         export_btn.setPopupMode(QToolButton.InstantPopup)
         export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(export_btn)
+
+    def _new_canvas(self, title: str | None = None):
+        scene = GridScene(self)
+        scene.setSceneRect(-5000, -5000, 10000, 10000)
+
+        view = EditorView(scene, self)  # EditorView už zná self jako "app"
+        # QGraphicsView je QWidget → můžeme ho dát přímo do tabu
+        idx = self.tabs.addTab(view, title or f"Canvas {self.tabs.count() + 1}")
+        self.tabs.setCurrentIndex(idx)
+
+        # Přesměruj interní ukazatele a signály na aktuální scene/view
+        self._activate_view(view)
+
+    def _activate_view(self, view):
+        # odpoj starý selectionChanged, pokud nějaký byl
+        try:
+            self.scene.selectionChanged.disconnect(self.sync_selected_to_props)
+        except Exception:
+            pass
+        self.view = view
+        self.scene = view.scene()
+        self.scene.selectionChanged.connect(self.sync_selected_to_props)
+
+        # volitelně: vyčisti overlaye/stav linku
+        self.view.clear_overlays()
+        self.pending_link_src = None
+
+    def _on_tab_changed(self, idx: int):
+        if idx < 0:
+            return
+        view = self.tabs.widget(idx)   # je to přímo EditorView
+        self._activate_view(view)
+
+    def _close_current_tab(self):
+        idx = self.tabs.currentIndex()
+        if idx >= 0:
+            self.tabs.removeTab(idx)
+        # když nic nezbyde, můžeš automaticky založit prázdný canvas:
+        if self.tabs.count() == 0:
+            self._new_canvas("Canvas 1")
 
     def create_prop_dock(self):
         dock = QDockWidget("Properties", self); panel = QWidget(); form = QFormLayout(panel)
@@ -439,7 +502,7 @@ class MainWindow(QMainWindow):
         self.from_dict(data)
 
     def export_image(self, kind: str="png"):
-        if kind in ("jpg"):
+        if kind in "jpg":
             path, _ = QFileDialog.getSaveFileName(self, "Export JPG", "diagram.jpg", "JPEG (*.jpg *.jpeg)")
             if not path:
                 return
