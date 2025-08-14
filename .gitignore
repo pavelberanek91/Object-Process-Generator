@@ -1,3 +1,10 @@
+# Outputs of app
+*.txt
+*.json
+*.jpg
+*.png
+*.svg
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
