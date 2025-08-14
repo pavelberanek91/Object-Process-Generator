@@ -1,15 +1,19 @@
-from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, List, Tuple
 from graphics.link import LinkItem
 from graphics.nodes import ObjectItem, ProcessItem
 
 def _opl_join(names: List[str]) -> str:
+    """Spojí seznam názvů do OPL-friendly textu: 'A, B and C' (zachová pořadí, odstraní duplicity)."""
     if not names: return ""
     names = list(dict.fromkeys(names))
     return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
 
 def preview_opl(scene) -> str:
+    """
+    Projde položky ve scéně, sesbírá informace o uzlech a linkách a vrátí OPL věty jako text 
+    (jedna věta na řádek).
+    """
     nodes: Dict[str, Tuple[str, str]] = {}
     proc_labels: Dict[str, str] = {}
     for it in scene.items():
