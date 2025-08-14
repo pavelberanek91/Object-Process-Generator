@@ -5,12 +5,18 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from dotenv import load_dotenv, find_dotenv
 from PySide6.QtCore import Qt, QRectF, QPointF
-from PySide6.QtGui import QPainter, QAction, QActionGroup
+from PySide6.QtGui import (
+    QPainter,
+    QAction,
+    QActionGroup,
+    QImage
+)
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QGraphicsItem, QDockWidget, QWidget, QFormLayout,
     QLineEdit, QLabel, QComboBox, QPushButton, QToolBar,
     QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QStyle
 )
+from PySide6.QtSvg import QSvgGenerator
 from constants import *
 from graphics.grid import GridScene
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
@@ -79,6 +85,7 @@ class MainWindow(QMainWindow):
         tb.addSeparator(); add_btn("Reset Zoom", self.zoom_reset)
         tb.addSeparator(); add_btn("Save JSON", self.save_json)
         tb.addSeparator(); add_btn("Load JSON", self.load_json)
+        tb.addSeparator(); add_btn("Export JPG", lambda: self.export_image("jpg"))
         tb.addSeparator(); add_btn("Export PNG", lambda: self.export_image("png"))
         tb.addSeparator(); add_btn("Export SVG", lambda: self.export_image("svg"))
         tb.addSeparator(); add_btn("Create OPL", self.import_opl_dialog)
@@ -383,22 +390,40 @@ class MainWindow(QMainWindow):
         self.from_dict(data)
 
     def export_image(self, kind: str="png"):
-        if kind == "png":
-            path, _ = QFileDialog.getSaveFileName(self, "Export PNG", "diagram.png", "PNG (*.png)")
-            if not path: return
+        if kind in ("jpg"):
+            path, _ = QFileDialog.getSaveFileName(self, "Export JPG", "diagram.jpg", "JPEG (*.jpg *.jpeg)")
+            if not path:
+                return
             rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
-            from PySide6.QtGui import QImage
-            img = QImage(int(rb.width()), int(rb.height()), QImage.Format_ARGB32_Premultiplied)
-            img.fill(0x00FFFFFF); painter = QPainter(img)
+            img = QImage(int(rb.width()), int(rb.height()), QImage.Format_RGB32)
+            img.fill(Qt.white)  # 100% bílé pozadí
+            painter = QPainter(img)
             self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
-            painter.end(); img.save(path)
+            painter.end()
+            img.save(path, "JPG", 95)
+        elif kind == "png":
+            path, _ = QFileDialog.getSaveFileName(self, "Export PNG", "diagram.png", "PNG (*.png)")
+            if not path: 
+                return
+            rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
+            img = QImage(int(rb.width()), int(rb.height()), QImage.Format_ARGB32_Premultiplied)
+            img.fill(0x00FFFFFF)
+            painter = QPainter(img)
+            self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
+            painter.end()
+            img.save(path)
         elif kind == "svg":
             path, _ = QFileDialog.getSaveFileName(self, "Export SVG", "diagram.svg", "SVG (*.svg)")
-            if not path: return
-            from PySide6.QtSvg import QSvgGenerator
+            if not path: 
+                return
             rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
-            gen = QSvgGenerator(); gen.setFileName(path); gen.setSize(rb.size().toSize()); gen.setViewBox(rb)
-            painter = QPainter(gen); self.scene.render(painter, target=rb, source=rb); painter.end()
+            gen = QSvgGenerator()
+            gen.setFileName(path)
+            gen.setSize(rb.size().toSize())
+            gen.setViewBox(rb)
+            painter = QPainter(gen)
+            self.scene.render(painter, target=rb, source=rb)
+            painter.end()
         else:
             QMessageBox.warning(self, "Export", f"Unsupported format: {kind}")
 
