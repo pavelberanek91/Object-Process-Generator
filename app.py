@@ -2,7 +2,7 @@ from __future__ import annotations
 import json, sys
 import os, re
 import math
-from dataclasses import dataclass, asdict
+from dataclasses import asdict
 from typing import Optional, List, Dict, Any, Tuple
 
 from dotenv import load_dotenv, find_dotenv
@@ -10,14 +10,10 @@ from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (
     QAction,
     QActionGroup,
-    QColor,
-    QIcon,
+    QColor, # nepouziva se
     QImage,
     QKeySequence,
     QPainter,
-    QPainterPath,
-    QPen,
-    QPixmap
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -55,15 +51,15 @@ from opl import parser as opl_parser
 from opl import generator as opl_generator
 from ai.nl2opl import nl_to_opl
 
-@dataclass
-class DiagramNode:
-    id: str; kind: str; label: str; x: float; y: float; w: float; h: float
-    parent_id: Optional[str] = None
+from ui.icons import icon_shape, icon_std
+from persistence.json_io import (
+    scene_to_dict,
+    dict_to_scene,
+    save_scene_as_json,
+    load_scene_from_json,
+    safe_base_filename,
+)
 
-@dataclass
-class DiagramLink:
-    id: str; src: str; dst: str; link_type: str; label: str = ""
-    type_dx: float = 6.0; type_dy: float = -6.0; label_dx: float = 6.0; label_dy: float = 12.0
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -108,8 +104,10 @@ class MainWindow(QMainWindow):
 
         def add_icon_btn(icon, tooltip, slot, checkable=False, group=None):
             act = QAction(icon, "", self)
-            act.setToolTip(tooltip); act.setStatusTip(tooltip)
-            act.triggered.connect(slot); act.setCheckable(checkable)
+            act.setToolTip(tooltip)
+            act.setStatusTip(tooltip)
+            act.triggered.connect(slot)
+            act.setCheckable(checkable)
             tb.addAction(act)
             if group: group.addAction(act)
             return act
@@ -124,9 +122,13 @@ class MainWindow(QMainWindow):
         file_menu = QMenu("File", self)
         file_menu.addAction("New OPD", lambda: self._new_canvas())
         file_menu.addSeparator()
-        file_menu.addAction("Export OPD",  lambda: self.save_json())
-        file_menu.addAction("Import OPD (Current Tab)", self.load_json_into_current)
-        file_menu.addAction("Import OPD (New Tab)", self.load_json_into_new_canvas)
+        file_menu.addAction("Export OPD",  lambda: save_scene_as_json(self.scene, self._current_tab_title()))
+        file_menu.addAction("Import OPD (Current Tab)", lambda: load_scene_from_json(
+                            self.scene, self.allowed_link, new_canvas_callback=self._new_canvas, 
+                            new_tab=False))
+        file_menu.addAction("Import OPD (New Tab)", lambda: load_scene_from_json(
+                            self.scene, self.allowed_link, new_canvas_callback=self._new_canvas, 
+                            new_tab=True))
         file_menu.addSeparator()
         file_menu.addAction("Rename OPD", lambda: self._rename_tab(self.tabs.currentIndex()))
         file_menu.addAction("Close Tab", lambda: self._close_current_tab())
@@ -161,36 +163,22 @@ class MainWindow(QMainWindow):
         export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(export_btn)
 
-        # tb.addSeparator()
-        # act_select = QAction("Select/Move", self)
-        # act_select.setCheckable(True)
-        # tb.addAction(act_select)
-        # act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
-        # tb.addSeparator()
-        # act_obj  = add_btn("Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT), True)
-        # tb.addSeparator()
-        # act_proc = add_btn("Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
-        # tb.addSeparator()
-        # act_state= add_btn("Add State",   lambda: self.set_mode(Mode.ADD_STATE), True)
-        # tb.addSeparator()
-        # act_link = add_btn("Add Link",    lambda: self.set_mode(Mode.ADD_LINK), True)
-
         add_spacing(tb, 16)
 
-        act_select = QAction(self._icon_shape("cursor"), "", self)
+        act_select = QAction(icon_shape("cursor"), "", self)
         act_select.setToolTip("Select/Move")
         act_select.setCheckable(True)
         tb.addAction(act_select)
         act_select.triggered.connect(lambda: self.set_mode(Mode.SELECT))
 
         tb.addSeparator()
-        act_obj  = add_icon_btn(self._icon_shape("object"), "Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT),  True)
+        act_obj  = add_icon_btn(icon_shape("object"), "Add Object",  lambda: self.set_mode(Mode.ADD_OBJECT),  True)
         tb.addSeparator()
-        act_proc = add_icon_btn(self._icon_shape("process"), "Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
+        act_proc = add_icon_btn(icon_shape("process"), "Add Process", lambda: self.set_mode(Mode.ADD_PROCESS), True)
         tb.addSeparator()
-        act_state = add_icon_btn(self._icon_shape("state"), "Add State",    lambda: self.set_mode(Mode.ADD_STATE),   True)
+        act_state = add_icon_btn(icon_shape("state"), "Add State",    lambda: self.set_mode(Mode.ADD_STATE),   True)
         tb.addSeparator()
-        act_link = add_icon_btn(self._icon_shape("link"),  "Add Link",     lambda: self.set_mode(Mode.ADD_LINK),    True)
+        act_link = add_icon_btn(icon_shape("link"),  "Add Link",     lambda: self.set_mode(Mode.ADD_LINK),    True)
 
         group = QActionGroup(self)
         group.setExclusive(True)
@@ -207,15 +195,15 @@ class MainWindow(QMainWindow):
 
         # Ostatní (necheckable)
         tb.addSeparator()
-        add_icon_btn(self._icon_shape("delete"), "Delete (Del)", self.delete_selected)
+        add_icon_btn(icon_shape("delete"), "Delete (Del)", self.delete_selected)
         tb.addSeparator()
-        add_icon_btn(self._icon_std(QStyle.SP_DialogDiscardButton), "Clear All", self.clear_all)
+        add_icon_btn(icon_std(self, QStyle.SP_DialogDiscardButton), "Clear All", self.clear_all)
         tb.addSeparator()
-        add_icon_btn(self._icon_shape("zoom_in"),  "Zoom In (Ctrl + Wheel)",  self.zoom_in)
+        add_icon_btn(icon_shape("zoom_in"),  "Zoom In (Ctrl + Wheel)",  self.zoom_in)
         tb.addSeparator()
-        add_icon_btn(self._icon_shape("zoom_out"), "Zoom Out (Ctrl + Wheel)", self.zoom_out)
+        add_icon_btn(icon_shape("zoom_out"), "Zoom Out (Ctrl + Wheel)", self.zoom_out)
         tb.addSeparator()
-        add_icon_btn(self._icon_shape("reset_zoom"), "Reset Zoom", self.zoom_reset)
+        add_icon_btn(icon_shape("reset_zoom"), "Reset Zoom", self.zoom_reset)
 
     def _new_canvas(self, title: str | None = None):
         scene = GridScene(self)
@@ -296,183 +284,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
     # --------- Modes & zoom ----------
-    # Továrna na ikonky
-    def _icon_shape(self, kind: str, size: int = 22) -> QIcon:
-        """Vykreslí jednoduché vektorové ikonky (object/process/state/link/zoom+/zoom-)."""
-        pm = QPixmap(size, size)
-        pm.fill(Qt.transparent)
-        p = QPainter(pm)
-        p.setRenderHint(QPainter.Antialiasing)
-        pen = QPen(Qt.black, 2)
-        p.setPen(pen)
-        p.setBrush(Qt.NoBrush)
-
-        if kind == "cursor":
-            arm_len=4
-            thickness=2
-            gap=2
-            s = float(size)
-            c = s / 2.0
-            L = float(arm_len if arm_len is not None else max(4, int(s * 0.35)))
-            t = float(max(1, thickness))
-            g = float(max(0, gap))
-            h = t / 2.0
-
-            path = QPainterPath()
-
-            # Horní rameno (obdélník)
-            path.moveTo(c - h, c - g - L)
-            path.lineTo(c + h, c - g - L)
-            path.lineTo(c + h, c - g)
-            path.lineTo(c - h, c - g)
-            path.closeSubpath()
-
-            # Dolní rameno
-            path.moveTo(c - h, c + g)
-            path.lineTo(c + h, c + g)
-            path.lineTo(c + h, c + g + L)
-            path.lineTo(c - h, c + g + L)
-            path.closeSubpath()
-
-            # Levé rameno
-            path.moveTo(c - g - L, c - h)
-            path.lineTo(c - g,     c - h)
-            path.lineTo(c - g,     c + h)
-            path.lineTo(c - g - L, c + h)
-            path.closeSubpath()
-
-            # Pravé rameno
-            path.moveTo(c + g,     c - h)
-            path.lineTo(c + g + L, c - h)
-            path.lineTo(c + g + L, c + h)
-            path.lineTo(c + g,     c + h)
-            path.closeSubpath()
-
-            # vykreslení
-            p.setPen(Qt.NoPen)      # čistá výplň
-            # případně: p.setPen(QPen(Qt.black, 1)) pro obrys
-            p.setBrush(Qt.black)
-            p.drawPath(path)
-
-        if kind == "object":
-            r = QRectF(3, 4, size - 6, size - 8)
-            p.drawRoundedRect(r, 4, 4)
-
-        elif kind == "process":
-            r = QRectF(3, 4, size - 6, size - 8)
-            p.drawEllipse(r)
-
-        elif kind == "state":
-            r = QRectF(5, 7, size - 10, size - 14)
-            p.drawRoundedRect(r, 4, 4)
-
-        elif kind == "link":
-            path = QPainterPath(QPointF(4, size - 6))
-            path.lineTo(size - 8, 6)
-            p.drawPath(path)
-            # šipka
-            ax, ay = size - 8, 6
-            bx, by = size - 14, 12
-            ang = math.atan2(ay - by, ax - bx)
-            L = 7
-            p.drawLine(ax, ay, ax - L * math.cos(ang + math.pi / 6), ay - L * math.sin(ang + math.pi / 6))
-            p.drawLine(ax, ay, ax - L * math.cos(ang - math.pi / 6), ay - L * math.sin(ang - math.pi / 6))
-
-        elif kind == "delete":
-            thickness  = 3
-            gap  = 0
-            arm_len = None
-            s = float(size)
-            c = QPointF(s/2.0, s/2.0)
-            L = float(arm_len if arm_len is not None else max(4, int(s * 0.35)))
-            t = float(max(1, thickness))
-            g = float(max(0, gap))
-            h = t / 2.0
-
-            # Jednotkové směry pro diagonály: u = směr, v = kolmice (pro šířku pruhu)
-            inv = 2**0.5
-            u1 = QPointF(1.0/inv,  1.0/inv)   # směr "\"
-            v1 = QPointF(-1.0/inv, 1.0/inv)   # kolmice k u1
-            u2 = QPointF(1.0/inv, -1.0/inv)   # směr "/"
-            v2 = QPointF( 1.0/inv, 1.0/inv)   # kolmice k u2
-
-            def add_arm_rect(path: QPainterPath, u: QPointF, v: QPointF, sign: float):
-                """Jeden obdélníkový „půl-pruh“ od mezery po konec ramene."""
-                start = c + u * (sign * g)
-                end   = c + u * (sign * (g + L))
-                p1 = start + v * h
-                p2 = end   + v * h
-                p3 = end   - v * h
-                p4 = start - v * h
-                path.moveTo(p1); path.lineTo(p2); path.lineTo(p3); path.lineTo(p4); path.closeSubpath()
-
-            # Sestavíme cestu ze 4 obdélníčků (2 diagonály × 2 směry od středu)
-            path = QPainterPath()
-            add_arm_rect(path, u1, v1, +1.0)
-            add_arm_rect(path, u1, v1, -1.0)
-            add_arm_rect(path, u2, v2, +1.0)
-            add_arm_rect(path, u2, v2, -1.0)
-
-            # vykreslení
-            p.setPen(Qt.NoPen)
-            p.setBrush(Qt.red)
-            p.drawPath(path)
-
-        elif kind in ("zoom_in", "zoom_out"):
-            # lupa
-            cx, cy, r = size / 2 - 3, size / 2 - 3, size / 2 - 6
-            p.drawEllipse(QRectF(cx - r, cy - r, 2 * r, 2 * r))
-            p.drawLine(cx + r - 1, cy + r - 1, size - 3, size - 3)  # držátko
-            # plus/minus
-            p.drawLine(cx - r / 2 + 1, cy, cx + r / 2 - 1, cy)
-            if kind == "zoom_in":
-                p.drawLine(cx, cy - r / 2 + 1, cx, cy + r / 2 - 1)
-
-        elif kind == "reset_zoom":
-            # def make_icon_R(size: int = 24, color=Qt.black) -> QIcon: TODO: takhle to chci refaktorovat
-
-            # Vnitřní box pro R (mírný okraj od hran ikony)
-            m  = size * 0.15
-            bx = m
-            by = m
-            bw = size - 2*m
-            bh = size - 2*m
-
-            # Geometrie R (poměrově, aby se dalo snadno doladit)
-            x0          = bx + bw * 0.10          # svislý dřík – X
-            top         = by + bh * 0.05          # horní Y
-            bot         = by + bh * 0.95          # dolní Y
-            mid         = by + bh * 0.58          # napojení misky/nohy
-            bowl_right  = bx + bw * 0.60          # pravý okraj misky
-            bowl_topY   = by + bh * 0.10
-            bowl_midY   = by + bh * 0.36
-            leg_end_x   = bx + bw * 0.60          # konec šikmé nohy (X)
-
-            # 1) svislý dřík
-            path = QPainterPath()
-            path.moveTo(x0, top)
-            path.lineTo(x0, bot)
-            p.drawPath(path)
-
-            # 2) horní „mísa“ – dvě kvadratické Beziérky
-            bowl = QPainterPath()
-            bowl.moveTo(x0, top)
-            bowl.quadTo(bowl_right, bowl_topY, bowl_right, bowl_midY)
-            bowl.quadTo(bowl_right, mid, x0, mid)
-            p.drawPath(bowl)
-
-            # 3) šikmá noha
-            leg = QPainterPath()
-            leg.moveTo(x0, mid)
-            leg.lineTo(leg_end_x, bot)
-            p.drawPath(leg)
-
-        p.end()
-        return QIcon(pm)
-
-    def _icon_std(self, sp):
-        """Nativní systémová ikonka (QStyle)."""
-        return self.style().standardIcon(sp)
+    
 
     def set_mode(self, mode: str):
         self.mode = mode
@@ -672,114 +484,9 @@ class MainWindow(QMainWindow):
         row = QHBoxLayout(); row.addStretch(1); row.addWidget(btn_save); row.addWidget(btn_close)
         layout.addLayout(row); dlg.setLayout(layout); dlg.resize(600, 400); dlg.exec()
 
-    # --------- Persistence ----------
-    def _safe_base_filename(self, title: str | None = None) -> str:
-        """Z názvu tabu udělá bezpečný základ pro soubor (bez přípon)."""
-        base = (title or self._current_tab_title()).strip()
-        # zakázané znaky a přebytečné mezery nahradíme podtržítkem
-        base = re.sub(r'[\\/*?:"<>|]+', "_", base)
-        base = re.sub(r"\s+", "_", base)
-        return base or "Canvas"
-
-    def to_dict(self) -> Dict[str, Any]:
-        nodes: List[DiagramNode] = []; links: List[DiagramLink] = []
-        for it in self.scene.items():
-            if isinstance(it, (ObjectItem, ProcessItem)):
-                r_scene = it.mapRectToScene(it.rect())
-                nodes.append(DiagramNode(
-                    id=it.node_id, kind=it.kind, label=it.label,
-                    x=r_scene.center().x(), y=r_scene.center().y(),
-                    w=r_scene.width(), h=r_scene.height()
-                ))
-                if isinstance(it, ObjectItem):
-                    for ch in it.childItems():
-                        if isinstance(ch, StateItem):
-                            sr = ch.mapRectToScene(ch.rect())
-                            nodes.append(DiagramNode(
-                                id=ch.node_id, kind="state", label=ch.label,
-                                x=sr.center().x(), y=sr.center().y(),
-                                w=sr.width(), h=sr.height(), parent_id=it.node_id
-                            ))
-        for it in self.scene.items():
-            if isinstance(it, LinkItem):
-                links.append(DiagramLink(
-                    id=next_id("link"),
-                    src=getattr(it.src, "node_id", ""), dst=getattr(it.dst, "node_id", ""),
-                    link_type=it.link_type, label=it.label,
-                    type_dx=getattr(it, "_type_offset", QPointF(6,-6)).x(),
-                    type_dy=getattr(it, "_type_offset", QPointF(6,-6)).y(),
-                    label_dx=(getattr(it, "_label_offset", QPointF(6,12)).x() if getattr(it, "ti_label", None) else 6.0),
-                    label_dy=(getattr(it, "_label_offset", QPointF(6,12)).y() if getattr(it, "ti_label", None) else 12.0),
-                ))
-        return {"nodes": [asdict(n) for n in nodes], "links": [asdict(l) for l in links],
-                "meta": {"format": "opm-mvp-json", "version": 1}}
-
-    def from_dict(self, data: Dict[str, Any]):
-        self.scene.clear()
-        id_to_item: Dict[str, QGraphicsItem] = {}
-        for n in data.get("nodes", []):
-            kind = n["kind"]; pos = QPointF(n["x"], n["y"])
-            if kind == "object":
-                it = ObjectItem(QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), n["label"])
-                it.node_id = n["id"]; it.setPos(pos); self.scene.addItem(it); id_to_item[n["id"]] = it
-        for n in data.get("nodes", []):
-            if n["kind"] == "process":
-                it = ProcessItem(QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), n["label"])
-                it.node_id = n["id"]; it.setPos(QPointF(n["x"], n["y"])); self.scene.addItem(it); id_to_item[n["id"]] = it
-        for n in data.get("nodes", []):
-            if n["kind"] == "state" and n.get("parent_id") in id_to_item:
-                parent = id_to_item[n["parent_id"]]
-                local_center = parent.mapFromScene(QPointF(n["x"], n["y"]))
-                rect = QRectF(local_center.x()-n["w"]/2, local_center.y()-n["h"]/2, n["w"], n["h"])
-                it = StateItem(parent, rect, n["label"]); it.node_id = n["id"]; self.scene.addItem(it); id_to_item[n["id"]] = it
-
-        invalid = 0
-        for l in data.get("links", []):
-            src = id_to_item.get(l["src"]); dst = id_to_item.get(l["dst"])
-            if src and dst:
-                lt = l.get("link_type", "input")
-                ok, msg = self.allowed_link(src, dst, lt)
-                if not ok: invalid += 1; continue
-                li = LinkItem(src, dst, lt, l.get("label", "")); self.scene.addItem(li)
-                from PySide6.QtCore import QPointF as _QPF
-                li._type_offset  = _QPF(l.get("type_dx", 6.0),  l.get("type_dy", -6.0))
-                li._label_offset = _QPF(l.get("label_dx", 6.0), l.get("label_dy", 12.0))
-                li.update_path()
-        if invalid:
-            QMessageBox.warning(self, "Některé vazby přeskočeny",
-                f"{invalid} neplatných vazeb bylo při načítání přeskočeno.")
-
-    def save_json(self):
-        base = self._safe_base_filename()
-        path, _ = QFileDialog.getSaveFileName(self, "Save OPD (JSON)", f"{base}.json", "JSON (*.json)")
-        if not path: 
-            return
-        with open(path, "w", encoding="utf-8") as f: 
-            json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
-
-    def load_json_into_current(self):
-        path, _ = QFileDialog.getOpenFileName(self, "Import OPD (current tab)", "", "JSON (*.json)")
-        if not path: 
-            return
-        with open(path, "r", encoding="utf-8") as f: 
-            data = json.load(f)
-        self.from_dict(data)
-
-    def load_json_into_new_canvas(self):
-        """Načte JSON do NOVÉ záložky (nový canvas)."""
-        path, _ = QFileDialog.getOpenFileName(self, "Import OPD (new tab)", "", "JSON (*.json)")
-        if not path:
-            return
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # název tabu z názvu souboru
-        base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
-        self._new_canvas(base)  # aktivuje novou scénu a přepne na ni
-        self.from_dict(data)
 
     def export_image(self, kind: str="png"):
-        base = self._safe_base_filename()
+        base = safe_base_filename()
 
         if kind in "jpg":
             path, _ = QFileDialog.getSaveFileName(self, "Export JPG", f"{base}.jpg", "JPEG (*.jpg *.jpeg)")

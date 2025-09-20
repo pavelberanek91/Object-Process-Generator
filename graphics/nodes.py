@@ -5,7 +5,7 @@ from PySide6.QtGui import QBrush, QPen, QPainter
 from PySide6.QtWidgets import (
     QGraphicsItem, QGraphicsRectItem, QGraphicsEllipseItem, QStyle
 )
-from constants import next_id
+from utils.ids import next_id
 from graphics.resize import ResizableMixin
 
 class BaseNodeItem:

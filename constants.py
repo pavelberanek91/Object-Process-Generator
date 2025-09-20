@@ -1,5 +1,4 @@
 from __future__ import annotations
-import itertools
 
 GRID_SIZE = 25
 NODE_W, NODE_H = 140, 70
@@ -28,7 +27,3 @@ class Mode:
     ADD_PROCESS = "add_process"
     ADD_STATE = "add_state"
     ADD_LINK = "add_link"
-
-_id_counter = itertools.count(1)
-def next_id(prefix: str) -> str:
-    return f"{prefix}_{next(_id_counter)}"

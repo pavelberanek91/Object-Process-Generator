@@ -37,7 +37,7 @@ class LinkItem(QGraphicsPathItem):
         "input": {"arrow": "dst"},
         "consumption": {"arrow": "dst"},
         "output": {"arrow": "dst"},
-        "result": {"arrow": "src"},
+        "result": {"arrow": "dst"},
         "effect": {"arrow": "both"},
         "agent": {"circle": ("filled", "dst")},
         "instrument": {"circle": ("hollow", "dst")},
