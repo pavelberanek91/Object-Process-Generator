@@ -60,7 +60,7 @@ def preview_opl(scene) -> str:
         if b["inputs"]:      lines.append(f"{pname} takes {_opl_join(b['inputs'])} as input.")
         if b["yields"]:      lines.append(f"{pname} yields {_opl_join(b['yields'])}.")
         if b["affects"]:     lines.append(f"{pname} affects {_opl_join(b['affects'])}.")
-        if b["agents"]:      lines.append(f"{_opl_join(b['agents'])} handle {pname}.")
+        if b["agents"]:      lines.append(f"{_opl_join(b['agents'])} handles {pname}.")
         if b["instruments"]: lines.append(f"{pname} requires {_opl_join(b['instruments'])}.")
 
     for whole, parts in struct_b["aggregation"].items():

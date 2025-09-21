@@ -346,33 +346,52 @@ class MainWindow(QMainWindow):
 
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
         lt = (link_type or "").lower()
-        s_kind = getattr(src_item, "kind", None); d_kind = getattr(dst_item, "kind", None)
+        s_kind = getattr(src_item, "kind", None)
+        d_kind = getattr(dst_item, "kind", None)
+
+        # Treat state as object
+        if s_kind == "state":
+            s_kind = "object"
+        if d_kind == "state":
+            d_kind = "object"
+
         if lt in PROCEDURAL_TYPES:
             if s_kind == "object" and d_kind == "process" and lt in {"input","consumption","agent","instrument","effect"}:
                 return True, ""
             if s_kind == "process" and d_kind == "object" and lt in {"output","result","effect"}:
                 return True, ""
-            return False, ("Procedurální vazba musí spojovat Object↔Process. "
-                           "Object→Process [input|consumption|agent|instrument|effect]; "
-                           "Process→Object [output|result|effect].")
+            return False, ("Procedurální vazba musí spojovat Object/State ↔ Process. "
+                        "Object/State → Process [input|consumption|agent|instrument|effect]; "
+                        "Process → Object/State [output|result|effect].")
+
         if lt in STRUCTURAL_TYPES:
             if s_kind in {"object","process"} and s_kind == d_kind:
                 return True, ""
-            return False, "Strukturální vazba musí být Object↔Object nebo Process↔Process (ne křížem)."
+            return False, "Strukturální vazba musí být Object/State↔Object/State nebo Process↔Process (ne křížem)."
+
         return True, ""
 
     def handle_link_click(self, pos: QPointF):
         item = self.scene.itemAt(pos, self.view.transform())
-        if not isinstance(item, (ObjectItem, ProcessItem)): return
+        if not isinstance(item, (ObjectItem, ProcessItem, StateItem)):
+            return
+        
         if self.pending_link_src is None:
-            self.pending_link_src = item; self.statusBar().showMessage("Choose target node…")
+            self.pending_link_src = item; 
+            self.statusBar().showMessage("Choose target node…")
         else:
-            if item is self.pending_link_src: self.pending_link_src = None; return
+            if item is self.pending_link_src: 
+                self.pending_link_src = None
+                return
             ok, msg = self.allowed_link(self.pending_link_src, item, self.default_link_type)
             if not ok:
-                QMessageBox.warning(self, "Neplatná vazba", msg); self.pending_link_src = None; return
+                QMessageBox.warning(self, "Neplatná vazba", msg)
+                self.pending_link_src = None
+                return
+
             self.scene.addItem(LinkItem(self.pending_link_src, item, self.default_link_type))
-            self.pending_link_src = None; self.statusBar().clearMessage()
+            self.pending_link_src = None
+            self.statusBar().clearMessage()
 
     def delete_selected(self):
         for it in list(self.scene.selectedItems()):
