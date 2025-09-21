@@ -46,7 +46,9 @@ def preview_opl(scene) -> str:
 
     buckets = defaultdict(lambda: {
         "consumes": [], "inputs": [], "yields": [], "affects": [], "agents": [], "instruments": [],
+        #"consumes": [], "yields": [], "affects": [], "agents": [], "instruments": [],
     })
+    proc_state_links: Dict[str, Dict[str, Dict[str, str]]] = defaultdict(lambda: defaultdict(dict))
     struct_b = {
         "aggregation": defaultdict(list),
         "exhibition": defaultdict(list),
@@ -63,19 +65,37 @@ def preview_opl(scene) -> str:
         d_kind, d_label = nodes.get(d, ("?", "?"))
         lt = it.link_type.lower()
 
+        # OBJECT/STATE -> PROCESS
         if s_kind in {"object", "state"} and d_kind == "process":
-            if lt == "consumption":   buckets[d]["consumes"].append(ent(s))
-            elif lt == "input":       buckets[d]["inputs"].append(ent(s))
-            elif lt == "agent":       buckets[d]["agents"].append(ent(s))
-            elif lt == "instrument":  buckets[d]["instruments"].append(ent(s))
-            elif lt == "effect":      buckets[d]["affects"].append(ent(s))
+            if lt == "consumption":   
+                buckets[d]["consumes"].append(ent(s))
+            elif lt == "agent":       
+                buckets[d]["agents"].append(ent(s))
+            elif lt == "instrument":  
+                buckets[d]["instruments"].append(ent(s))
+            elif lt == "effect":      
+                buckets[d]["affects"].append(ent(s))
+            elif lt == "input":       
+                buckets[d]["inputs"].append(ent(s))
+                # pokud jde o stav -> uložíme jako input state
+                if s_kind == "state" and s in id_to_parent:
+                    obj_label = nodes[id_to_parent[s]][1]
+                    proc_state_links[d][obj_label]["in"] = s_label
 
+        # PROCESS -> OBJECT/STATE
         elif s_kind == "process" and d_kind in {"object", "state"}:
-            if lt in ("result", "output"): buckets[s]["yields"].append(ent(d))
-            elif lt == "effect":           buckets[s]["affects"].append(ent(d))
-
+            if lt == "effect":           
+                buckets[s]["affects"].append(ent(d))
+            elif lt in ("result", "output"): 
+                if d_kind == "object":
+                    # celý objekt -> yield
+                    buckets[s]["yields"].append(ent(d))
+                elif d_kind == "state" and d in id_to_parent:
+                    # stav -> jen pro změnový pár, ne yield
+                    obj_label = nodes[id_to_parent[d]][1]
+                    proc_state_links[s][obj_label]["out"] = d_label
+            
         elif s_kind in ("object","process") and d_kind in ("object","process"):
-            #struct_b[lt][s_label].append(d_label)
             struct_b[lt][ent(s)].append(ent(d))
 
     # seznam vygenerovanych OPL vet
@@ -101,13 +121,25 @@ def preview_opl(scene) -> str:
         pname = proc_labels.get(pid)
         if not pname: 
             continue
-        if b["consumes"]:    lines.append(f"{pname} consumes {_opl_join(b['consumes'])}.")
-        if b["inputs"]:      lines.append(f"{pname} takes {_opl_join(b['inputs'])} as input.")
-        if b["yields"]:      lines.append(f"{pname} yields {_opl_join(b['yields'])}.")
-        if b["affects"]:     lines.append(f"{pname} affects {_opl_join(b['affects'])}.")
-        if b["agents"]:      lines.append(f"{_opl_join(b['agents'])} handles {pname}.")
-        if b["instruments"]: lines.append(f"{pname} requires {_opl_join(b['instruments'])}.")
 
+        # input/output pairs
+        if pid in proc_state_links:
+            for obj, pair in proc_state_links[pid].items():
+                if "in" in pair and "out" in pair:
+                    lines.append(f"{pname} changes {obj} from {pair['in']} to {pair['out']}.")
+
+        if b["consumes"]:    
+            lines.append(f"{pname} consumes {_opl_join(b['consumes'])}.")
+        if b["yields"]:      
+            lines.append(f"{pname} yields {_opl_join(b['yields'])}.")
+        if b["affects"]:     
+            lines.append(f"{pname} affects {_opl_join(b['affects'])}.")
+        if b["agents"]:      
+            lines.append(f"{_opl_join(b['agents'])} handles {pname}.")
+        if b["instruments"]: 
+            lines.append(f"{pname} requires {_opl_join(b['instruments'])}.")
+
+    # 3) strukturalni vazby
     for whole, parts in struct_b["aggregation"].items():
         if parts: 
             lines.append(f"{whole} consists of {_opl_join(sorted(parts))}.")
