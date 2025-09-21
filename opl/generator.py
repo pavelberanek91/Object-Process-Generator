@@ -1,26 +1,48 @@
 from collections import defaultdict
 from typing import Dict, List, Tuple
 from graphics.link import LinkItem
-from graphics.nodes import ObjectItem, ProcessItem
+from graphics.nodes import ObjectItem, ProcessItem, StateItem
 
 def _opl_join(names: List[str]) -> str:
     """Spojí seznam názvů do OPL-friendly textu: 'A, B and C' (zachová pořadí, odstraní duplicity)."""
-    if not names: return ""
+    if not names: 
+        return ""
     names = list(dict.fromkeys(names))
     return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+def _opl_join_states(names: List[str]) -> str:
+    """Spojí seznam názvů do OPL-friendly textu: 'A, B or C'."""
+    if not names: 
+        return ""
+    names = list(dict.fromkeys(names))
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " or " + names[-1]
 
 def preview_opl(scene) -> str:
     """
     Projde položky ve scéně, sesbírá informace o uzlech a linkách a vrátí OPL věty jako text 
     (jedna věta na řádek).
     """
-    nodes: Dict[str, Tuple[str, str]] = {}
-    proc_labels: Dict[str, str] = {}
+    nodes: Dict[str, Tuple[str, str]] = {}       # node_id -> (kind, label)
+    id_to_parent: Dict[str, str] = {}            # state_id -> parent_object_id
+    proc_labels: Dict[str, str] = {}             # process_id -> process label
+
     for it in scene.items():
-        if isinstance(it, (ObjectItem, ProcessItem)):
+        if isinstance(it, (ObjectItem, ProcessItem, StateItem)):
             nodes[it.node_id] = (it.kind, it.label)
             if isinstance(it, ProcessItem):
                 proc_labels[it.node_id] = it.label
+            if isinstance(it, StateItem):
+                parent = it.parentItem()
+                if parent and hasattr(parent, "node_id"):
+                    id_to_parent[it.node_id] = parent.node_id
+
+    # --- helper na pojmenování entity ---
+    def ent(nid: str) -> str:
+        kind, label = nodes.get(nid, ("?", "?"))
+        if kind == "state" and nid in id_to_parent:
+            parent_label = nodes.get(id_to_parent[nid], ("?", "?"))[1]
+            return f"{parent_label} at state {label}"
+        return label
 
     buckets = defaultdict(lambda: {
         "consumes": [], "inputs": [], "yields": [], "affects": [], "agents": [], "instruments": [],
@@ -33,29 +55,52 @@ def preview_opl(scene) -> str:
     }
 
     for it in scene.items():
-        if not isinstance(it, LinkItem): continue
-        s = getattr(it.src, "node_id", ""); d = getattr(it.dst, "node_id", "")
-        s_kind, s_label = nodes.get(s, ("?", "?")); d_kind, d_label = nodes.get(d, ("?", "?"))
+        if not isinstance(it, LinkItem): 
+            continue
+        s = getattr(it.src, "node_id", "")
+        d = getattr(it.dst, "node_id", "")
+        s_kind, s_label = nodes.get(s, ("?", "?"))
+        d_kind, d_label = nodes.get(d, ("?", "?"))
         lt = it.link_type.lower()
 
-        if s_kind == "object" and d_kind == "process":
-            if lt == "consumption":   buckets[d]["consumes"].append(s_label)
-            elif lt == "input":       buckets[d]["inputs"].append(s_label)
-            elif lt == "agent":       buckets[d]["agents"].append(s_label)
-            elif lt == "instrument":  buckets[d]["instruments"].append(s_label)
-            elif lt == "effect":      buckets[d]["affects"].append(s_label)
+        if s_kind in {"object", "state"} and d_kind == "process":
+            if lt == "consumption":   buckets[d]["consumes"].append(ent(s))
+            elif lt == "input":       buckets[d]["inputs"].append(ent(s))
+            elif lt == "agent":       buckets[d]["agents"].append(ent(s))
+            elif lt == "instrument":  buckets[d]["instruments"].append(ent(s))
+            elif lt == "effect":      buckets[d]["affects"].append(ent(s))
 
-        elif s_kind == "process" and d_kind == "object":
-            if lt in ("result", "output"): buckets[s]["yields"].append(d_label)
-            elif lt == "effect":           buckets[s]["affects"].append(d_label)
+        elif s_kind == "process" and d_kind in {"object", "state"}:
+            if lt in ("result", "output"): buckets[s]["yields"].append(ent(d))
+            elif lt == "effect":           buckets[s]["affects"].append(ent(d))
 
         elif s_kind in ("object","process") and d_kind in ("object","process"):
-            struct_b[lt][s_label].append(d_label)
+            #struct_b[lt][s_label].append(d_label)
+            struct_b[lt][ent(s)].append(ent(d))
 
+    # seznam vygenerovanych OPL vet
     lines: List[str] = []
+
+    # 1) Objekty a jejich stavy
+    object_states: Dict[str, List[str]] = defaultdict(list)
+    for it in scene.items():
+        if isinstance(it, StateItem):
+            parent = it.parentItem()
+            if parent and isinstance(parent, ObjectItem):
+                object_states[parent.label].append(it.label)
+
+    for obj, states in object_states.items():
+        if states:
+            if len(states) == 1:
+                lines.append(f"{obj} is {_opl_join_states(sorted(states))}.")
+            else:
+                lines.append(f"{obj} can be {_opl_join_states(sorted(states))}.")
+
+    # 2) Procesní vazby
     for pid, b in buckets.items():
         pname = proc_labels.get(pid)
-        if not pname: continue
+        if not pname: 
+            continue
         if b["consumes"]:    lines.append(f"{pname} consumes {_opl_join(b['consumes'])}.")
         if b["inputs"]:      lines.append(f"{pname} takes {_opl_join(b['inputs'])} as input.")
         if b["yields"]:      lines.append(f"{pname} yields {_opl_join(b['yields'])}.")

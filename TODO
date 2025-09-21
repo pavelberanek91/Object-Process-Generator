@@ -1,4 +1,18 @@
-[ ] Pridat moznost, aby vztahy mely vazby
+[x] "A can be as as1" ma byt "A is as1" (jedna se jen u jednoho stavu)
+[x] "agent funguje"
+[x] 'agent stavovy do procesu' -≥ "A in as1 handles B." opravit na "A at state as1 handles B."
+[x] "instrument funguje"
+[x] 'instrument stavovy do procesu' -≥ "B requires A in as1." opravit na "B requires A at state as1."
+[x] "effect funguje"
+[x] "consumption"
+[x] 'consumption stavovy do procesu'  -≥ "B consumes A in as1." opravit na "B consumes A at state as1."
+[x] "result"
+[x] "result stavovy" -≥ ta sama oprava na at state
+[ ] "input a output link pair" -≥ "ted to mam takes input a yields", musi byt input i output a pak bude hlaska "B changes A from as1 to as2"
+[ ] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
+[ ] "exhibition-characterization stavovy"
+
+
 [ ] Vyresit kreaci, zmenu stavu a destrukci
 [ ] Vyresit vsechny typy vztahu
 
@@ -20,3 +34,7 @@
 
 [ ] generovat python kod z opl
 [ ] generovat navrhove vzory z opl
+
+[ ] command undo a redo
+
+[ ] vytvorit simulacni model pomoci asi Petriho siti
