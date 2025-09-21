@@ -5,7 +5,7 @@ from dataclasses import asdict
 from typing import Dict, Any, List
 
 from PySide6.QtCore import QPointF, QRectF
-from PySide6.QtWidgets import QFileDialog, QMessageBox
+from PySide6.QtWidgets import QFileDialog, QMessageBox, QGraphicsItem
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
 from graphics.link import LinkItem
 from constants import NODE_W, NODE_H, STATE_W, STATE_H, LINK_TYPES, PROCEDURAL_TYPES, STRUCTURAL_TYPES, GRID_SIZE
@@ -53,7 +53,7 @@ def scene_to_dict(scene) -> Dict[str, Any]:
                             parent_id=it.node_id
                         ))
                         
-    for it in self.scene.items():
+    for it in scene.items():
         if isinstance(it, LinkItem):
             links.append(DiagramLink(
                 id=next_id("link"),
@@ -78,7 +78,7 @@ def scene_to_dict(scene) -> Dict[str, Any]:
 
 def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
     """Načte dict do scény."""
-    self.scene.clear()
+    scene.clear()
     id_to_item: Dict[str, QGraphicsItem] = {}
     
     for n in data.get("nodes", []):
@@ -114,14 +114,14 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
         dst = id_to_item.get(l["dst"])
         if src and dst:
             lt = l.get("link_type", "input")
-            ok, msg = self.allowed_link(src, dst, lt)
+            ok, msg = allowed_link(src, dst, lt)
             if not ok:
                 invalid += 1
                 continue
             li = LinkItem(src, dst, lt, l.get("label", ""))
             scene.addItem(li)    
-            li._type_offset  = _QPF(l.get("type_dx", 6.0),  l.get("type_dy", -6.0))
-            li._label_offset = _QPF(l.get("label_dx", 6.0), l.get("label_dy", 12.0))
+            li._type_offset  = QPointF(l.get("type_dx", 6.0),  l.get("type_dy", -6.0))
+            li._label_offset = QPointF(l.get("label_dx", 6.0), l.get("label_dy", 12.0))
             li.update_path()
             
     if invalid:
@@ -130,12 +130,12 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
         
         
 def save_scene_as_json(scene, title: str | None = None):
-    base = safe_base_filename()
+    base = safe_base_filename(title)
     path, _ = QFileDialog.getSaveFileName(None, "Save OPD (JSON)", f"{base}.json", "JSON (*.json)")
     if not path: 
         return
     with open(path, "w", encoding="utf-8") as f: 
-        json.dump(scene_to_dict(), f, ensure_ascii=False, indent=2)
+        json.dump(scene_to_dict(scene), f, ensure_ascii=False, indent=2)
 
 
 def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab: bool = False):
@@ -143,10 +143,14 @@ def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab:
     path, _ = QFileDialog.getOpenFileName(None, caption, "", "JSON (*.json)")
     if not path:
         return
+    
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    target_scene = scene
     if new_tab and new_canvas_callback:
         base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
-        new_canvas_callback(base)
-    dict_to_scene(scene, data, allowed_link)
+        view = new_canvas_callback(base)
+        target_scene = view.scene()
+
+    dict_to_scene(target_scene, data, allowed_link)

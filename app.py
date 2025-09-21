@@ -1,19 +1,17 @@
 from __future__ import annotations
-import json, sys
-import os, re
-import math
-from dataclasses import asdict
-from typing import Optional, List, Dict, Any, Tuple
+import sys
+from typing import Optional
 
 from dotenv import load_dotenv, find_dotenv
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (
     QAction,
     QActionGroup,
-    QColor, # nepouziva se
+    QColor,
     QImage,
     QKeySequence,
     QPainter,
+    QPalette
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -53,8 +51,6 @@ from ai.nl2opl import nl_to_opl
 
 from ui.icons import icon_shape, icon_std
 from persistence.json_io import (
-    scene_to_dict,
-    dict_to_scene,
     save_scene_as_json,
     load_scene_from_json,
     safe_base_filename,
@@ -216,6 +212,8 @@ class MainWindow(QMainWindow):
 
         # Přesměruj interní ukazatele a signály na aktuální scene/view
         self._activate_view(view)
+        
+        return view
 
     def _activate_view(self, view):
         # odpoj starý selectionChanged, pokud nějaký byl
@@ -344,6 +342,7 @@ class MainWindow(QMainWindow):
         x = min(max(p.x()-STATE_W/2, r.left()+6), r.right()-STATE_W-6)
         y = min(max(p.y()-STATE_H/2, r.top()+6),  r.bottom()-STATE_H-6)
         self.scene.addItem(StateItem(obj, QRectF(x, y, STATE_W, STATE_H)))
+
 
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
         lt = (link_type or "").lower()
@@ -540,9 +539,68 @@ class MainWindow(QMainWindow):
             self.statusBar().clearMessage()
         # self.set_mode(Mode.SELECT) - pokud bychom chtěli přejít do select režimu
 
+
+def make_light_palette() -> QPalette:
+    palette = QPalette()
+
+    # --- základní pozadí ---
+    palette.setColor(QPalette.Window, QColor("white"))
+    palette.setColor(QPalette.Base, QColor("white"))
+
+    # --- texty ---
+    palette.setColor(QPalette.WindowText, QColor("black"))  # text v labelech, titulcích
+    palette.setColor(QPalette.Text, QColor("black"))        # text v editorech
+    palette.setColor(QPalette.ButtonText, QColor("black"))  # text na tlačítkách
+    palette.setColor(QPalette.ToolTipText, QColor("black"))
+
+    # --- tlačítka ---
+    palette.setColor(QPalette.Button, QColor("#f0f0f0"))    # světle šedé tlačítko
+    palette.setColor(QPalette.Highlight, QColor("#0078d7")) # modrý highlight (Windows-like)
+    palette.setColor(QPalette.HighlightedText, QColor("white"))
+
+    # --- disabled stavy ---
+    disabled_text = QColor(120, 120, 120)
+    palette.setColor(QPalette.Disabled, QPalette.Text, disabled_text)
+    palette.setColor(QPalette.Disabled, QPalette.WindowText, disabled_text)
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, disabled_text)
+
+    return palette
+
+
 def main():
     load_dotenv(find_dotenv(), override=True)
     app = QApplication(sys.argv)
+
+    # Nastavíme světlý vzhled
+    app.setPalette(make_light_palette())
+
+    app.setStyleSheet("""
+        QToolBar {
+            background: white;
+            border: none;   /* volitelné – skryje defaultní čáru */
+        }
+        QToolBar QToolButton {
+            background: white;
+            color: black;
+            border: 1px solid #dcdcdc;
+            border-radius: 6px;
+            padding: 4px 6px;
+        }
+        QToolBar QToolButton:hover {
+            background: #f5f5f5;
+        }
+        QToolBar QToolButton:pressed {
+            background: #eaeaea;
+        }
+        QToolBar QToolButton:checked {
+            background: #e6f0ff;
+            border-color: #699BFF;
+        }
+        QToolBar QToolButton:disabled {
+            color: #888;
+        }
+    """)
+    
     w = MainWindow(); w.resize(1100, 700); w.show()
     sys.exit(app.exec())
 

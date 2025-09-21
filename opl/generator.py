@@ -26,11 +26,10 @@ def preview_opl(scene) -> str:
         "consumes": [], "inputs": [], "yields": [], "affects": [], "agents": [], "instruments": [],
     })
     struct_b = {
-        "whole_parts": defaultdict(list),
-        "characterized": defaultdict(list),
-        "exhibits": defaultdict(list),
-        "generalizes": defaultdict(list),
-        "classifies": defaultdict(list),
+        "aggregation": defaultdict(list),
+        "exhibition": defaultdict(list),
+        "generalization": defaultdict(list),
+        "instantiation": defaultdict(list),
     }
 
     for it in scene.items():
@@ -51,16 +50,7 @@ def preview_opl(scene) -> str:
             elif lt == "effect":           buckets[s]["affects"].append(d_label)
 
         elif s_kind in ("object","process") and d_kind in ("object","process"):
-            if lt in ("aggregation","participation"):
-                struct_b["whole_parts"][d_label].append(s_label)
-            elif lt == "characterization":
-                struct_b["characterized"][s_label].append(d_label)
-            elif lt == "exhibition":
-                struct_b["exhibits"][s_label].append(d_label)
-            elif lt in ("specialization","generalization"):
-                struct_b["generalizes"][d_label].append(s_label)
-            elif lt in ("instantiation","classification"):
-                struct_b["classifies"][d_label].append(s_label)
+            struct_b[lt][s_label].append(d_label)
 
     lines: List[str] = []
     for pid, b in buckets.items():
@@ -73,15 +63,17 @@ def preview_opl(scene) -> str:
         if b["agents"]:      lines.append(f"{_opl_join(b['agents'])} handle {pname}.")
         if b["instruments"]: lines.append(f"{pname} requires {_opl_join(b['instruments'])}.")
 
-    for whole, parts in struct_b["whole_parts"].items():
-        if parts: lines.append(f"{whole} is composed of {_opl_join(sorted(parts))}.")
-    for obj, attrs in struct_b["characterized"].items():
-        if attrs: lines.append(f"{obj} is characterized by {_opl_join(sorted(attrs))}.")
-    for obj, attrs in struct_b["exhibits"].items():
-        if attrs: lines.append(f"{obj} exhibits {_opl_join(sorted(attrs))}.")
-    for sup, subs in struct_b["generalizes"].items():
-        if subs: lines.append(f"{sup} generalizes {_opl_join(sorted(subs))}.")
-    for cls, insts in struct_b["classifies"].items():
-        if insts: lines.append(f"{cls} has instances {_opl_join(sorted(insts))}.")
+    for whole, parts in struct_b["aggregation"].items():
+        if parts: 
+            lines.append(f"{whole} consists of {_opl_join(sorted(parts))}.")
+    for obj, attrs in struct_b["exhibition"].items():
+        if attrs: 
+            lines.append(f"{obj} exhibits {_opl_join(sorted(attrs))}.")
+    for sup, subs in struct_b["generalization"].items():
+        if subs: 
+            lines.append(f"{_opl_join(sorted(subs))} {'is a' if len(subs) == 1 else 'are'} {sup}{'s' if len(subs) > 1 else ''}.")
+    for cls, insts in struct_b["instantiation"].items():
+        if insts: 
+            lines.append(f"{_opl_join(sorted(insts))} {'is an' if len(insts) == 1 else 'are'} instance{'s' if len(insts) > 1 else ''} of {cls}.")
 
     return "\n".join(lines) if lines else "-- OPL preview has no content yet --"

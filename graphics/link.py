@@ -42,13 +42,9 @@ class LinkItem(QGraphicsPathItem):
         "agent": {"circle": ("filled", "dst")},
         "instrument": {"circle": ("hollow", "dst")},
         "aggregation": {"marker": ("diamond_filled", "dst")},
-        "participation": {"marker": ("diamond_open", "dst")},
         "exhibition": {"marker": ("square_open", "dst")},
-        "characterization": {"marker": ("square_filled", "dst")},
         "generalization": {"marker": ("triangle_open", "dst")},
-        "specialization": {"marker": ("triangle_open", "dst")},
         "instantiation": {"marker": ("circle_filled", "dst")},
-        "classification": {"marker": ("circle_open", "dst")},
     }
 
     def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="input", label: str=""):

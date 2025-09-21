@@ -13,13 +13,11 @@ LINK_TYPES = [
     # procedural
     "input", "consumption", "output", "result", "effect", "agent", "instrument",
     # structural
-    "aggregation", "participation", "exhibition", "characterization",
-    "generalization", "specialization", "instantiation", "classification",
+    "aggregation", "exhibition", "generalization", "instantiation",
 ]
 
 PROCEDURAL_TYPES = {"input", "consumption", "output", "result", "effect", "agent", "instrument"}
-STRUCTURAL_TYPES  = {"aggregation", "participation", "exhibition", "characterization",
-                     "generalization", "specialization", "instantiation", "classification"}
+STRUCTURAL_TYPES  = {"aggregation", "exhibition", "generalization", "instantiation"}
 
 class Mode:
     SELECT = "select"

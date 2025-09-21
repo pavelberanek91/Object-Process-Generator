@@ -1,12 +1,12 @@
 from __future__ import annotations
-from typing import Optional
-from PySide6.QtCore import QRectF, Qt
-from PySide6.QtGui import QBrush, QPen, QPainter
+from PySide6.QtCore import QRectF, Qt, QPointF
+from PySide6.QtGui import QBrush, QPen, QPainter, QColor, QFont
 from PySide6.QtWidgets import (
     QGraphicsItem, QGraphicsRectItem, QGraphicsEllipseItem, QStyle
 )
 from utils.ids import next_id
 from graphics.resize import ResizableMixin
+
 
 class BaseNodeItem:
     def init_node(self, kind: str, label: str):
@@ -50,13 +50,14 @@ class BaseNodeItem:
         self.label = text
         self.update()
 
+
 class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     def __init__(self, rect: QRectF, label: str = "Object"):
         super().__init__(rect)
         self.init_node("object", label)
         self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(Qt.black, 2))
-        self._init_resize() # přidá gripy
+        self.setPen(QPen(QColor(0, 128, 0), 2))  # tmavě zelený obrys
+        self._init_resize()  # přidá gripy
 
     def boundingRect(self) -> QRectF:
         m = 8
@@ -66,13 +67,61 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setPen(self.pen())
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), 12, 12)
-        painter.drawText(self.rect(), Qt.AlignCenter, self.label)
+
+        # dostupná oblast pro text (pokud má stavy, posuneme text nahoru)
+        states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
+        rect_for_text = self.rect()
+        if states:
+            st_h = states[0].rect().height() + 6  # výška stavů + mezera
+            rect_for_text = rect_for_text.adjusted(0, 0, 0, -st_h)
+
+        # text (tučný Arial, černý)
+        font = QFont("Arial", 12, QFont.Bold)
+        painter.setFont(font)
+        painter.setPen(Qt.black)
+        painter.drawText(rect_for_text, Qt.AlignCenter, self.label)
+
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 2, Qt.DashLine)
             sel.setCosmetic(True)
             painter.setPen(sel)
             painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(self.rect().adjusted(-6, -6, 6, 6), 12, 12)
+
+    def mouseDoubleClickEvent(self, event):
+        # dvojklik kamkoli do objektu = přidání stavu
+        if event.button() == Qt.LeftButton:
+            from app import App  # lazy import, aby se nezacyklil
+            App.instance().add_state(self, event.scenePos())
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
+
+    def setRect(self, rect: QRectF):
+        """Zabrání zmenšení objektu tak, aby stavy vyčuhovaly ven."""
+        states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
+        if states:
+            rightmost = max(st.mapToParent(st.rect().topRight()).x() for st in states)
+            min_width = rightmost - rect.x() + 12  # +margin
+            if rect.width() < min_width:
+                rect.setWidth(min_width)
+
+        super().setRect(rect)
+
+        # po změně rectu srovnej všechny stavy do řady dole
+        #self._layout_states()
+
+    def _layout_states(self):
+        """Rozmístí všechny stavy do jedné řady dole podél spodní hrany objektu. - UZ ZBYTECNE (zatim nechavam)"""
+        margin = 6
+        r = self.rect()
+        states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
+        for idx, st in enumerate(states):
+            w, h = st.rect().width(), st.rect().height()
+            x = r.left() + margin + idx * (w + margin)
+            y = r.bottom() - h - margin
+            st.setRect(QRectF(x, y, w, h))
+
 
 class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     def __init__(self, rect: QRectF, label: str = "Process"):
@@ -99,38 +148,90 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         return super().boundingRect().adjusted(-m, -m, m, m)
 
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setPen(self.pen())
+        # vykresli obrys (modrý)
+        painter.setPen(QPen(QColor(0, 0, 128), 3))
         painter.setBrush(self.brush())
         painter.drawEllipse(self.rect())
-        painter.drawText(self.rect(), Qt.AlignCenter, self.label)
+
+        # vykresli text (černý)
+        font = QFont("Arial", 12, QFont.Bold)
+        painter.setFont(font)
+        painter.setPen(Qt.black)
+        painter.drawText(self.rect(), Qt.AlignCenter, self.label)      
+
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 2, Qt.DashLine)
             sel.setCosmetic(True)
             painter.setPen(sel)
             painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(self.rect().adjusted(-6, -6, 6, 6))
+            painter.drawEllipse(self.rect().adjusted(-6, -6, 6, 6)) 
 
-class StateItem(BaseNodeItem, QGraphicsRectItem):
+
+# class StateItem(BaseNodeItem, QGraphicsRectItem):
+#     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
+#         super().__init__(rect, parent=parent_obj)
+#         self.init_node("state", label)
+#         self.setBrush(QBrush(Qt.white))
+#         self.setPen(QPen(Qt.black, 1.5))
+#         self.setFlags(
+#             #QGraphicsItem.ItemIsMovable |
+#             QGraphicsItem.ItemIsSelectable |
+#             QGraphicsItem.ItemSendsGeometryChanges
+#         )
+
+#     def boundingRect(self) -> QRectF:
+#         m = 6
+#         return super().boundingRect().adjusted(-m, -m, m, m)
+
+#     def paint(self, painter: QPainter, option, widget=None):
+#         # vykresli obrys (hnědý)
+#         painter.setPen(QPen(QColor(150, 75, 0), 3))
+#         painter.setBrush(self.brush())
+#         painter.drawRoundedRect(self.rect(), 8, 8)
+        
+#         # vykresli text (černý)
+#         font = QFont("Arial", 12, QFont.Bold)
+#         painter.setFont(font)
+#         painter.setPen(Qt.black)
+#         painter.drawText(self.rect(), Qt.AlignCenter, self.label)    
+
+#         if option.state & QStyle.State_Selected:
+#             sel = QPen(Qt.blue, 1.5, Qt.DashLine); sel.setCosmetic(True)
+#             painter.setPen(sel); painter.setBrush(Qt.NoBrush)
+#             painter.drawRoundedRect(self.rect().adjusted(-4, -4, 4, 4), 8, 8)
+
+
+class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
         super().__init__(rect, parent=parent_obj)
         self.init_node("state", label)
         self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(Qt.black, 1.5))
+        self.setPen(QPen(QColor(150, 75, 0), 2))
         self.setFlags(
             QGraphicsItem.ItemIsMovable |
             QGraphicsItem.ItemIsSelectable |
             QGraphicsItem.ItemSendsGeometryChanges
         )
+        # voláme bez argumentů, jako u ObjectItem a ProcessItem
+        self._init_resize()
 
     def boundingRect(self) -> QRectF:
         m = 6
         return super().boundingRect().adjusted(-m, -m, m, m)
 
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setPen(self.pen()); painter.setBrush(self.brush())
+        painter.setPen(QPen(QColor(150, 75, 0), 2))
+        painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), 8, 8)
+
+        font = QFont("Arial", 10, QFont.Bold)
+        painter.setFont(font)
+        painter.setPen(Qt.black)
         painter.drawText(self.rect(), Qt.AlignCenter, self.label)
+
         if option.state & QStyle.State_Selected:
-            sel = QPen(Qt.blue, 1.5, Qt.DashLine); sel.setCosmetic(True)
-            painter.setPen(sel); painter.setBrush(Qt.NoBrush)
+            sel = QPen(Qt.blue, 1.5, Qt.DashLine)
+            sel.setCosmetic(True)
+            painter.setPen(sel)
+            painter.setBrush(Qt.NoBrush)
             painter.drawRoundedRect(self.rect().adjusted(-4, -4, 4, 4), 8, 8)
