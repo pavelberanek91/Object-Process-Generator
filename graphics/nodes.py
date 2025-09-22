@@ -108,6 +108,18 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
 
         super().setRect(rect)
 
+    def itemChange(self, change, value):
+        res = super().itemChange(change, value)
+
+        if change == QGraphicsItem.ItemPositionHasChanged:
+            # update linků objektu (už řeší BaseNodeItem)
+            # navíc update linků jeho stavů
+            for st in (ch for ch in self.childItems() if isinstance(ch, StateItem)):
+                for ln in getattr(st, "_links", []) or []:
+                    ln.update_path()
+
+        return res
+
         # po změně rectu srovnej všechny stavy do řady dole
         #self._layout_states()
 
@@ -121,6 +133,8 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             x = r.left() + margin + idx * (w + margin)
             y = r.bottom() - h - margin
             st.setRect(QRectF(x, y, w, h))
+
+    
 
 
 class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
