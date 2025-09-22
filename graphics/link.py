@@ -167,6 +167,10 @@ class LinkItem(QGraphicsPathItem):
         angle = math.atan2(b.y()-a.y(), b.x()-a.x())
         mid = QPointF((a.x() + b.x())/2, (a.y() + b.y())/2)
 
+        # místo konců kreslíme do středu
+        style = self._style()
+        link_type = self.link_type
+        
         def draw_arrow_at(point: QPointF, ang: float, open: bool=False):
             arrow_size = 10
             p1 = point + QPointF(-arrow_size*math.cos(ang - math.pi/6), -arrow_size*math.sin(ang - math.pi/6))
@@ -174,40 +178,41 @@ class LinkItem(QGraphicsPathItem):
             poly = QPolygonF([point, p1, p2])
             painter.setBrush(Qt.NoBrush if open and not selected else (Qt.blue if selected else Qt.black))
             painter.drawPolygon(poly)
+            
+        if link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
+            # kreslíme do středu
+            if style.get("arrow"):
+                draw_arrow_at(mid, angle)
+            if style.get("marker"):
+                kind, _end = style["marker"]
+                self._draw_marker(painter, mid, angle, kind)
+            if style.get("circle"):
+                fill_kind, _end = style["circle"]
+                pos = mid
+                painter.save()
+                painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
+                painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
+                painter.restore()
+        else:
+            # původní chování – kreslení na konce
+            am = style.get("arrow")
+            if am == "dst": draw_arrow_at(b, angle)
+            elif am == "src": draw_arrow_at(a, angle + math.pi)
+            elif am == "both": (draw_arrow_at(b, angle), draw_arrow_at(a, angle + math.pi))
 
-        # místo konců kreslíme do středu
-        style = self._style()
-        
-        # am = style.get("arrow")
-        # if am == "dst": draw_arrow_at(b, angle)
-        # elif am == "src": draw_arrow_at(a, angle + math.pi)
-        # elif am == "both": (draw_arrow_at(b, angle), draw_arrow_at(a, angle + math.pi))
+            marker = style.get("marker")
+            if marker:
+                kind, end = marker
+                self._draw_marker(painter, self._point_near(a, b, end, 12), angle, kind)
 
-        # marker = style.get("marker")
-        # if marker:
-        #     kind, end = marker
-        #     self._draw_marker(painter, self._point_near(a,b,end,12), angle, kind)
-
-        # circle = style.get("circle")
-        # if circle:
-        #     fill_kind, end = circle
-        #     pos = self._point_near(a, b, end, 10)
-        #     painter.save()
-        #     painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
-        #     painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
-        #     painter.restore()
-
-        if style.get("arrow"):
-            draw_arrow_at(mid, angle)   # vždy uprostřed
-        if style.get("marker"):
-            kind, _end = style["marker"]
-            self._draw_marker(painter, mid, angle, kind)
-        if style.get("circle"):
-            fill_kind, _end = style["circle"]
-            painter.save()
-            painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
-            painter.drawEllipse(QRectF(mid.x()-5, mid.y()-5, 10, 10))
-            painter.restore()
+            circle = style.get("circle")
+            if circle:
+                fill_kind, end = circle
+                pos = self._point_near(a, b, end, 10)
+                painter.save()
+                painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
+                painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
+                painter.restore()
 
     # simple API
     def set_link_type(self, lt: str):

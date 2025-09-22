@@ -22,7 +22,7 @@
 [ ] veci jsou interni a externi
 [ ] veci jsou fyzicke a informacni
 ---
-[ ] Posunout znacky linku doprostred cary
+[x] Posunout znacky linku doprostred cary
 [ ] Nahradit znacky spravymi
 [ ] Vyresit ortogonalitu vztahu
 [ ] Pridat kardinality

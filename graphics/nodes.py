@@ -185,6 +185,7 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
         super().__init__(rect, parent=parent_obj)
         self.init_node("state", label)
+        self.state_type = "default"
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(150, 75, 0), 2))
         self.setFlags(

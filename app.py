@@ -87,8 +87,15 @@ class MainWindow(QMainWindow):
 
         # Toolbary / docky až po vytvoření prvního canvase
         self.create_toolbar()
+        
+        # Tvorba property panelu
         self.create_prop_dock()
-        #self.scene.selectionChanged.connect(self.sync_selected_to_props)
+        
+        # napojím změnu výběru na panel, aby pri kliku se objevily vlastnosti prvku
+        self.scene.selectionChanged.connect(self.update_properties_panel)
+        
+        # při startu ho vyprázdním
+        self.update_properties_panel()
 
     # Pomocník – tlač příkazy na undo stack
     def push_cmd(self, cmd):
@@ -184,7 +191,17 @@ class MainWindow(QMainWindow):
         act_state = add_icon_btn(icon_shape("state"), "Add State",    lambda: self.set_mode(Mode.ADD_STATE),   True)
         tb.addSeparator()
         act_link = add_icon_btn(icon_shape("link"),  "Add Link",     lambda: self.set_mode(Mode.ADD_LINK),    True)
+        
+        self.cmb_default_link_type = QComboBox()
+        self.cmb_default_link_type.addItems(LINK_TYPES)
+        self.cmb_default_link_type.setCurrentText(self.default_link_type)
+        self.cmb_default_link_type.currentTextChanged.connect(
+            lambda text: setattr(self, "default_link_type", text)
+        )
+        tb.addWidget(QLabel("Default Link:"))
+        tb.addWidget(self.cmb_default_link_type)
 
+        # group, aby se vždy aktivoval jen jeden mód
         group = QActionGroup(self)
         group.setExclusive(True)
         for a in (act_select, act_obj, act_proc, act_state, act_link):
@@ -280,24 +297,84 @@ class MainWindow(QMainWindow):
             if new:
                 self.tabs.setTabText(idx, new)
 
+    # def create_prop_dock(self):
+    #     dock = QDockWidget("Properties", self)
+    #     panel = QWidget()
+    #     form = QFormLayout(panel)
+    #     self.ed_label = QLineEdit()
+    #     self.ed_label.setPlaceholderText("Label…")
+    #     self.ed_label.editingFinished.connect(self.apply_label_change)
+    #     form.addRow("Label", self.ed_label)
+
+    #     self.cmb_link_type = QComboBox()
+    #     self.cmb_link_type.addItems(LINK_TYPES)
+    #     self.cmb_link_type.setCurrentText(self.default_link_type)
+    #     self.cmb_link_type.currentTextChanged.connect(self.handle_link_type_combo_change)
+    #     self.lbl_link_type = QLabel("Link type (for new links)")
+    #     form.addRow(self.lbl_link_type, self.cmb_link_type)
+
+    #     self.btn_generate_opl = QPushButton("Generate OPL (preview)")
+    #     self.btn_generate_opl.clicked.connect(self.preview_opl)
+    #     form.addRow(self.btn_generate_opl)
+
+    #     panel.setLayout(form); dock.setWidget(panel)
+    #     self.addDockWidget(Qt.RightDockWidgetArea, dock)§
+        
     def create_prop_dock(self):
-        dock = QDockWidget("Properties", self); panel = QWidget(); form = QFormLayout(panel)
-        self.ed_label = QLineEdit(); self.ed_label.setPlaceholderText("Label…")
+        self.dock_props = QDockWidget("Properties", self)
+        self.panel_props = QWidget(self.dock_props)   # parent = dock
+        form = QFormLayout(self.panel_props)
+
+        self.ed_label = QLineEdit(self.panel_props)
+        self.ed_label.setPlaceholderText("Label…")
         self.ed_label.editingFinished.connect(self.apply_label_change)
         form.addRow("Label", self.ed_label)
 
-        self.cmb_link_type = QComboBox(); self.cmb_link_type.addItems(LINK_TYPES)
+        self.cmb_link_type = QComboBox(self.panel_props)
+        self.cmb_link_type.addItems(LINK_TYPES)
         self.cmb_link_type.setCurrentText(self.default_link_type)
         self.cmb_link_type.currentTextChanged.connect(self.handle_link_type_combo_change)
-        self.lbl_link_type = QLabel("Link type (for new links)")
+        self.lbl_link_type = QLabel("Link type", self.panel_props)
         form.addRow(self.lbl_link_type, self.cmb_link_type)
 
-        self.btn_generate_opl = QPushButton("Generate OPL (preview)")
+        self.btn_generate_opl = QPushButton("Generate OPL (preview)", self.panel_props)
         self.btn_generate_opl.clicked.connect(self.preview_opl)
         form.addRow(self.btn_generate_opl)
 
-        panel.setLayout(form); dock.setWidget(panel)
-        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+        self.panel_props.setLayout(form)
+        self.dock_props.setWidget(self.panel_props)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_props)
+
+    def update_properties_panel(self):
+        it = self.selected_item()
+
+        if isinstance(it, (ObjectItem, ProcessItem, StateItem)):
+            # Objekt / proces / stav → má label
+            self.ed_label.show()
+            self.ed_label.setText(it.label)
+            self.ed_label.setEnabled(True)
+
+            self.lbl_link_type.hide()
+            self.cmb_link_type.hide()
+
+        elif isinstance(it, LinkItem):
+            # Link → má label + typ
+            self.ed_label.show()
+            self.ed_label.setText(it.label)
+            self.ed_label.setEnabled(True)
+
+            self.lbl_link_type.show()
+            self.cmb_link_type.show()
+            self.cmb_link_type.setCurrentText(it.link_type)
+
+        else:
+            # Nic vybraného → všechno schovat
+            self.ed_label.clear()
+            self.ed_label.setEnabled(False)
+            self.ed_label.hide()
+
+            self.lbl_link_type.hide()
+            self.cmb_link_type.hide()
 
     # --------- Modes & zoom ----------
     
@@ -321,14 +398,44 @@ class MainWindow(QMainWindow):
             self.view.clear_temp_link()
 
     def keyPressEvent(self, event):
+        # mazání
         if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
             self.delete_selected()
             event.accept()
             return
+        
+        # zrušení linku
         if event.key() == Qt.Key_Escape and self.mode == Mode.ADD_LINK and self.pending_link_src is not None:
             self.cancel_link_creation()
             event.accept()
             return
+        
+        # --- rychlé přepínání typu linku čísly ---
+        if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5, Qt.Key_6, Qt.Key_7):
+            mapping = {
+                Qt.Key_1: "input",
+                Qt.Key_2: "output",
+                Qt.Key_3: "consumption",
+                Qt.Key_4: "result",
+                Qt.Key_5: "effect",
+                Qt.Key_6: "agent",
+                Qt.Key_7: "instrument",
+            }
+            lt = mapping.get(event.key())
+            sel = [it for it in self.scene.selectedItems() if isinstance(it, LinkItem)]
+            if sel:
+                for ln in sel:
+                    ln.set_link_type(lt)
+                # posuň i combobox v panelu vlastností
+                self.update_properties_panel()
+            else:
+                # když není nic vybráno, nastaví se default pro další link
+                self.default_link_type = lt
+                self.cmb_default_link_type.setCurrentText(lt)
+
+            event.accept()
+            return
+        
         super().keyPressEvent(event)
 
     def zoom_in(self):
@@ -447,10 +554,44 @@ class MainWindow(QMainWindow):
             self.lbl_link_type.setText("Link type (for new links)")
         self._suppress_combo = False
 
+    # def apply_label_change(self):
+    #     it = self.selected_item()
+    #     text = self.ed_label.text()
+    #     if isinstance(it, (ObjectItem, ProcessItem, StateItem)):
+    #         it.set_label(text)
+    #     elif isinstance(it, LinkItem):
+    #         it.set_label_text(text)
+    
     def apply_label_change(self):
-        it = self.selected_item(); text = self.ed_label.text()
-        if isinstance(it, (ObjectItem, ProcessItem, StateItem)): it.set_label(text)
-        elif isinstance(it, LinkItem): it.set_label_text(text)
+        selected = self.scene.selectedItems()
+        if not selected:
+            return
+        item = selected[0]
+
+        new_text = self.ed_label.text().strip()
+        if not new_text or new_text == item.label:
+            return
+
+        from undo.commands import SetLabelCommand
+        cmd = SetLabelCommand(item, new_text)
+        self.push_cmd(cmd)
+        
+    def apply_state_type_change(self):
+        selected = self.scene.selectedItems()
+        if not selected:
+            return
+        item = selected[0]
+
+        if not isinstance(item, StateItem):
+            return
+
+        new_type = self.cmb_state_type.currentText()
+        if getattr(item, "state_type", None) == new_type:
+            return
+
+        # nastav atribut přímo na item
+        item.state_type = new_type
+        item.update()
 
     def handle_link_type_combo_change(self, text: str):
         if getattr(self, "_suppress_combo", False): return
