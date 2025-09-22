@@ -154,20 +154,24 @@ class LinkItem(QGraphicsPathItem):
             
         # --- kardinality ---
         if self.link_type in self.CARDINALITY_TYPES:
-            #if self.ti_card_src:
+            a, b = self.endpoints()
+            v = b - a
+            L = math.hypot(v.x(), v.y()) or 1
+            ux, uy = v.x()/L, v.y()/L
+            
             if self.ti_card_src and self.card_src:
-                v = (a - b)
-                L = math.hypot(v.x(), v.y()) or 1
-                offset = QPointF(v.x()/L * 20, v.y()/L * 20)  # posun ven od objektu
                 self.ti_card_src.setText(self.card_src)
-                self.ti_card_src.setPos(self.mapFromScene(a + offset))
-            #if self.ti_card_dst:
+                # posun od začátku hrany, trochu dovnitř linku (t=0.15)
+                pos = QPointF(a.x() + ux*30, a.y() + uy*30)
+                #self.ti_card_src.setPos(self.mapFromScene(pos))
+                self.ti_card_src.setPos(pos)
+                
             if self.ti_card_dst and self.card_dst:
-                v = (b - a)
-                L = math.hypot(v.x(), v.y()) or 1
-                offset = QPointF(v.x()/L * 20, v.y()/L * 20)
                 self.ti_card_dst.setText(self.card_dst)
-                self.ti_card_dst.setPos(self.mapFromScene(b + offset))
+                # posun od konce hrany, trochu dovnitř linku (t=0.15)
+                pos = QPointF(b.x() - ux*30, b.y() - uy*30)
+                #self.ti_card_dst.setPos(self.mapFromScene(pos))
+                self.ti_card_dst.setPos(pos)
         else:
             if self.ti_card_src: 
                 self.ti_card_src.setText("")

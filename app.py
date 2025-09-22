@@ -384,6 +384,7 @@ class MainWindow(QMainWindow):
         if isinstance(it, LinkItem):
             it.set_card_src(self.ed_card_src.text())
             it.set_card_dst(self.ed_card_dst.text())
+            it.update_path()
 
     # --------- Modes & zoom ----------
     

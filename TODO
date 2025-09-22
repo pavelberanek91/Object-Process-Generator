@@ -14,7 +14,7 @@
 [ ] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
 [ ] "exhibition-characterization stavovy"
 ----
-[ ] Vytvorit postranni listu s vlastnostmi
+[x] Vytvorit postranni listu s vlastnostmi
 [ ] Dat vsechny linky do toolbaru jako opcad
 ---
 [ ] OPL ma mit bold pro nazvy objektu a procesu a stavu
@@ -25,7 +25,7 @@
 [x] Posunout znacky linku doprostred cary
 [ ] Nahradit znacky spravymi
 [ ] Vyresit ortogonalitu vztahu
-[ ] Pridat kardinality
+[x] Pridat kardinality
 [ ] vlastni labely linku
 ---
 [ ] Poladit prompt
