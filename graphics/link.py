@@ -163,15 +163,13 @@ class LinkItem(QGraphicsPathItem):
                 self.ti_card_src.setText(self.card_src)
                 # posun od začátku hrany, trochu dovnitř linku (t=0.15)
                 pos = QPointF(a.x() + ux*30, a.y() + uy*30)
-                #self.ti_card_src.setPos(self.mapFromScene(pos))
-                self.ti_card_src.setPos(pos)
+                self.ti_card_src.setPos(self.mapFromScene(pos))
                 
             if self.ti_card_dst and self.card_dst:
                 self.ti_card_dst.setText(self.card_dst)
                 # posun od konce hrany, trochu dovnitř linku (t=0.15)
                 pos = QPointF(b.x() - ux*30, b.y() - uy*30)
-                #self.ti_card_dst.setPos(self.mapFromScene(pos))
-                self.ti_card_dst.setPos(pos)
+                self.ti_card_dst.setPos(self.mapFromScene(pos))
         else:
             if self.ti_card_src: 
                 self.ti_card_src.setText("")

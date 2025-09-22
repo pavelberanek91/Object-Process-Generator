@@ -61,8 +61,11 @@ class EditorView(QGraphicsView):
         self.clear_ghost(); self.clear_temp_link()
 
     def clear_ghost(self):
-        if self.ghost_item is not None:
-            self.scene().removeItem(self.ghost_item); self.ghost_item = None; self.ghost_kind = None
+        if self.ghost_item:
+            if self.ghost_item.scene():   # je stále připojená k nějaké scéně?
+                self.scene().removeItem(self.ghost_item)
+            self.ghost_item = None
+            self.ghost_kind = None
 
     def update_ghost(self, scene_pos: QPointF):
         from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsEllipseItem
@@ -104,8 +107,13 @@ class EditorView(QGraphicsView):
                 self.ghost_item.setRect(rect)
 
     def clear_temp_link(self):
-        if self.temp_link is not None:
-            self.scene().removeItem(self.temp_link); self.temp_link = None
+        # if self.temp_link is not None:
+        #     self.scene().removeItem(self.temp_link)
+        #     self.temp_link = None
+        if self.temp_link:
+            if self.temp_link.scene():   # pořád je ve scéně?
+                self.scene().removeItem(self.temp_link)
+            self.temp_link = None
 
     def update_temp_link(self, scene_pos: QPointF):
         src = self.app.pending_link_src

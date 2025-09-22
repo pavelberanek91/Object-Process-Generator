@@ -124,8 +124,8 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
             scene.addItem(li)    
             li._type_offset  = QPointF(l.get("type_dx", 6.0),  l.get("type_dy", -6.0))
             li._label_offset = QPointF(l.get("label_dx", 6.0), l.get("label_dy", 12.0))
-            li.set_card_src(dl.card_src)
-            li.set_card_dst(dl.card_dst)
+            li.set_card_src(l.get("card_src", ""))
+            li.set_card_dst(l.get("card_dst", ""))
             li.update_path()
             
     if invalid:

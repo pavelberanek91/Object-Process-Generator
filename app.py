@@ -486,29 +486,30 @@ class MainWindow(QMainWindow):
 
 
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
-        lt = (link_type or "").lower()
-        s_kind = getattr(src_item, "kind", None)
-        d_kind = getattr(dst_item, "kind", None)
+        #TODO: tohle dokoncime pozdeji, ted nechci radsi mit validace kvuli generovani AI (pozdeji vse odkomentovat)
+        # lt = (link_type or "").lower()
+        # s_kind = getattr(src_item, "kind", None)
+        # d_kind = getattr(dst_item, "kind", None)
 
-        # Treat state as object
-        if s_kind == "state":
-            s_kind = "object"
-        if d_kind == "state":
-            d_kind = "object"
+        # # Treat state as object
+        # if s_kind == "state":
+        #     s_kind = "object"
+        # if d_kind == "state":
+        #     d_kind = "object"
 
-        if lt in PROCEDURAL_TYPES:
-            if s_kind == "object" and d_kind == "process" and lt in {"input","consumption","agent","instrument","effect"}:
-                return True, ""
-            if s_kind == "process" and d_kind == "object" and lt in {"output","result","effect"}:
-                return True, ""
-            return False, ("Procedurální vazba musí spojovat Object/State ↔ Process. "
-                        "Object/State → Process [input|consumption|agent|instrument|effect]; "
-                        "Process → Object/State [output|result|effect].")
+        # if lt in PROCEDURAL_TYPES:
+        #     if s_kind == "object" and d_kind == "process" and lt in {"input","consumption","agent","instrument","effect"}:
+        #         return True, ""
+        #     if s_kind == "process" and d_kind == "object" and lt in {"output","result","effect"}:
+        #         return True, ""
+        #     return False, ("Procedurální vazba musí spojovat Object/State ↔ Process. "
+        #                 "Object/State → Process [input|consumption|agent|instrument|effect]; "
+        #                 "Process → Object/State [output|result|effect].")
 
-        if lt in STRUCTURAL_TYPES:
-            if s_kind in {"object","process"} and s_kind == d_kind:
-                return True, ""
-            return False, "Strukturální vazba musí být Object/State↔Object/State nebo Process↔Process (ne křížem)."
+        # if lt in STRUCTURAL_TYPES:
+        #     if s_kind in {"object","process"} and s_kind == d_kind:
+        #         return True, ""
+        #     return False, "Strukturální vazba musí být Object/State↔Object/State nebo Process↔Process (ne křížem)."
 
         return True, ""
 
