@@ -46,22 +46,38 @@ class LinkItem(QGraphicsPathItem):
         "generalization": {"marker": ("triangle_open", "dst")},
         "instantiation": {"marker": ("circle_filled", "dst")},
     }
+    
+    CARDINALITY_TYPES = {"aggregation", "exhibition", "generalization", "instantiation"}
 
     def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="input", label: str=""):
         super().__init__()
         self.setZValue(1)
         self.setFlags(QGraphicsItem.ItemIsSelectable)
-        self.src = src; self.dst = dst
-        self.link_type = link_type; self.label = label
+        self.src = src
+        self.card_src = ""
+        self.dst = dst
+        self.card_dst = ""
+        self.link_type = link_type
+        self.label = label
         self.setPen(QPen(Qt.black, 2))
 
-        self._a = QPointF(); self._b = QPointF()
+        self._a = QPointF()
+        self._b = QPointF()
         self._label_bounds = QRectF()
         self._type_offset  = QPointF(6, -4)
         self._label_offset = QPointF(6, 10)
 
         self.ti_type  = LabelHandle(self, "type", self.link_type)
         self.ti_label = LabelHandle(self, "label", f'"{self.label}"') if self.label else None
+        
+        self.ti_card_src = QGraphicsSimpleTextItem("", self)
+        self.ti_card_src.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.ti_card_src.setZValue(3)
+
+        self.ti_card_dst = QGraphicsSimpleTextItem("", self)
+        self.ti_card_dst.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.ti_card_dst.setZValue(3)
+        
         self.update_path()
 
         # backrefs
@@ -129,11 +145,34 @@ class LinkItem(QGraphicsPathItem):
         return QPointF(a.x()+ux*offset, a.y()+uy*offset) if end=="src" else QPointF(b.x()-ux*offset, b.y()-uy*offset)
 
     def _position_text(self):
-        a, b = self.endpoints(); mid = (a+b)/2
+        a, b = self.endpoints()
+        mid = (a+b)/2
         if getattr(self, "ti_type", None):
             self.ti_type.setPos(self.mapFromScene(mid + self._type_offset))
         if getattr(self, "ti_label", None):
             self.ti_label.setPos(self.mapFromScene(mid + self._label_offset))
+            
+        # --- kardinality ---
+        if self.link_type in self.CARDINALITY_TYPES:
+            #if self.ti_card_src:
+            if self.ti_card_src and self.card_src:
+                v = (a - b)
+                L = math.hypot(v.x(), v.y()) or 1
+                offset = QPointF(v.x()/L * 20, v.y()/L * 20)  # posun ven od objektu
+                self.ti_card_src.setText(self.card_src)
+                self.ti_card_src.setPos(self.mapFromScene(a + offset))
+            #if self.ti_card_dst:
+            if self.ti_card_dst and self.card_dst:
+                v = (b - a)
+                L = math.hypot(v.x(), v.y()) or 1
+                offset = QPointF(v.x()/L * 20, v.y()/L * 20)
+                self.ti_card_dst.setText(self.card_dst)
+                self.ti_card_dst.setPos(self.mapFromScene(b + offset))
+        else:
+            if self.ti_card_src: 
+                self.ti_card_src.setText("")
+            if self.ti_card_dst: 
+                self.ti_card_dst.setText("")
 
     def _draw_marker(self, painter: QPainter, pos: QPointF, angle: float, kind: str):
         painter.save(); painter.translate(pos)
@@ -235,6 +274,18 @@ class LinkItem(QGraphicsPathItem):
                 self.scene().removeItem(self.ti_label)
                 self.ti_label = None
         self._position_text(); self.update()
+        
+    def set_card_src(self, text: str):
+        self.card_src = text
+        if self.ti_card_src:
+            self.ti_card_src.setText(text)
+        self.update()
+
+    def set_card_dst(self, text: str):
+        self.card_dst = text
+        if self.ti_card_dst:
+            self.ti_card_dst.setText(text)
+        self.update()
 
     def remove_refs(self):
         for n in (self.src, self.dst):

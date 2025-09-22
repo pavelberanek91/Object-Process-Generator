@@ -67,6 +67,8 @@ def scene_to_dict(scene) -> Dict[str, Any]:
                           if getattr(it, "ti_label", None) else 6.0),
                 label_dy=(getattr(it, "_label_offset", QPointF(6,12)).y()
                           if getattr(it, "ti_label", None) else 12.0),
+                card_src=it.card_src if hasattr(it, "card_src") else "",
+                card_dst=it.card_dst if hasattr(it, "card_dst") else "",
             ))
             
     return {
@@ -122,6 +124,8 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
             scene.addItem(li)    
             li._type_offset  = QPointF(l.get("type_dx", 6.0),  l.get("type_dy", -6.0))
             li._label_offset = QPointF(l.get("label_dx", 6.0), l.get("label_dy", 12.0))
+            li.set_card_src(dl.card_src)
+            li.set_card_dst(dl.card_dst)
             li.update_path()
             
     if invalid:

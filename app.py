@@ -296,47 +296,42 @@ class MainWindow(QMainWindow):
             new = text.strip()
             if new:
                 self.tabs.setTabText(idx, new)
-
-    # def create_prop_dock(self):
-    #     dock = QDockWidget("Properties", self)
-    #     panel = QWidget()
-    #     form = QFormLayout(panel)
-    #     self.ed_label = QLineEdit()
-    #     self.ed_label.setPlaceholderText("Label…")
-    #     self.ed_label.editingFinished.connect(self.apply_label_change)
-    #     form.addRow("Label", self.ed_label)
-
-    #     self.cmb_link_type = QComboBox()
-    #     self.cmb_link_type.addItems(LINK_TYPES)
-    #     self.cmb_link_type.setCurrentText(self.default_link_type)
-    #     self.cmb_link_type.currentTextChanged.connect(self.handle_link_type_combo_change)
-    #     self.lbl_link_type = QLabel("Link type (for new links)")
-    #     form.addRow(self.lbl_link_type, self.cmb_link_type)
-
-    #     self.btn_generate_opl = QPushButton("Generate OPL (preview)")
-    #     self.btn_generate_opl.clicked.connect(self.preview_opl)
-    #     form.addRow(self.btn_generate_opl)
-
-    #     panel.setLayout(form); dock.setWidget(panel)
-    #     self.addDockWidget(Qt.RightDockWidgetArea, dock)§
         
     def create_prop_dock(self):
         self.dock_props = QDockWidget("Properties", self)
         self.panel_props = QWidget(self.dock_props)   # parent = dock
         form = QFormLayout(self.panel_props)
 
+        # label
+        self.lbl_label = QLabel("Label", self.panel_props)
         self.ed_label = QLineEdit(self.panel_props)
         self.ed_label.setPlaceholderText("Label…")
         self.ed_label.editingFinished.connect(self.apply_label_change)
-        form.addRow("Label", self.ed_label)
+        form.addRow(self.lbl_label, self.ed_label)
 
+        # typ linku
+        self.lbl_link_type = QLabel("Link type", self.panel_props)
         self.cmb_link_type = QComboBox(self.panel_props)
         self.cmb_link_type.addItems(LINK_TYPES)
         self.cmb_link_type.setCurrentText(self.default_link_type)
         self.cmb_link_type.currentTextChanged.connect(self.handle_link_type_combo_change)
-        self.lbl_link_type = QLabel("Link type", self.panel_props)
         form.addRow(self.lbl_link_type, self.cmb_link_type)
+        
+        # kardinality
+        self.lbl_card_src = QLabel("Cardinality (src)", self.panel_props)
+        self.ed_card_src = QLineEdit()
+        self.ed_card_src.setPlaceholderText("e.g. 0..*")
+        self.ed_card_src.editingFinished.connect(self.apply_card_change)
 
+        self.lbl_card_dst = QLabel("Cardinality (dst)", self.panel_props)
+        self.ed_card_dst = QLineEdit()
+        self.ed_card_dst.setPlaceholderText("e.g. 1")
+        self.ed_card_dst.editingFinished.connect(self.apply_card_change)
+
+        form.addRow(self.lbl_card_src, self.ed_card_src)
+        form.addRow(self.lbl_card_dst, self.ed_card_dst)
+
+        # OPL
         self.btn_generate_opl = QPushButton("Generate OPL (preview)", self.panel_props)
         self.btn_generate_opl.clicked.connect(self.preview_opl)
         form.addRow(self.btn_generate_opl)
@@ -347,34 +342,48 @@ class MainWindow(QMainWindow):
 
     def update_properties_panel(self):
         it = self.selected_item()
+        
+        # defaultně schováme vše, co nemá být vidět
+        self.lbl_label.hide()
+        self.ed_label.hide()
+        self.lbl_link_type.hide()
+        self.cmb_link_type.hide()
+        self.ed_card_src.hide()
+        self.ed_card_dst.hide()
+        self.lbl_card_src.hide()
+        self.lbl_card_dst.hide()
 
         if isinstance(it, (ObjectItem, ProcessItem, StateItem)):
             # Objekt / proces / stav → má label
+            self.lbl_label.show()
             self.ed_label.show()
-            self.ed_label.setText(it.label)
             self.ed_label.setEnabled(True)
-
-            self.lbl_link_type.hide()
-            self.cmb_link_type.hide()
-
+            self.ed_label.setText(it.label)
         elif isinstance(it, LinkItem):
-            # Link → má label + typ
+            # Link → má label + typ + kardinalitu
+            self.lbl_label.show()
             self.ed_label.show()
-            self.ed_label.setText(it.label)
             self.ed_label.setEnabled(True)
-
+            self.ed_label.setText(it.label)
+            
             self.lbl_link_type.show()
             self.cmb_link_type.show()
             self.cmb_link_type.setCurrentText(it.link_type)
-
-        else:
-            # Nic vybraného → všechno schovat
-            self.ed_label.clear()
-            self.ed_label.setEnabled(False)
-            self.ed_label.hide()
-
-            self.lbl_link_type.hide()
-            self.cmb_link_type.hide()
+            
+            # Kardinality jen pro určité typy linků
+            if it.link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
+                self.lbl_card_src.show()
+                self.ed_card_src.show()
+                self.lbl_card_dst.show()
+                self.ed_card_dst.show()
+                self.ed_card_src.setText(it.card_src)
+                self.ed_card_dst.setText(it.card_dst)
+            
+    def apply_card_change(self):
+        it = self.selected_item()
+        if isinstance(it, LinkItem):
+            it.set_card_src(self.ed_card_src.text())
+            it.set_card_dst(self.ed_card_dst.text())
 
     # --------- Modes & zoom ----------
     

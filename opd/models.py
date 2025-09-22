@@ -25,3 +25,5 @@ class DiagramLink:
     type_dy: float = -6.0
     label_dx: float = 6.0
     label_dy: float = 12.0
+    card_src: str = "" # kardinalita u zdroje
+    card_dst: str = "" # kardinalita u cíle
