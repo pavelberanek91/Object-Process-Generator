@@ -21,7 +21,7 @@ class AddNodeCommand(QUndoCommand):
     def redo(self):
         if not self.item.scene():
             self.scene.addItem(self.item)
-        self.item.setSelected(True)
+        #self.item.setSelected(True) - smazat, vse zustalo pri pridani oznacene
 
     def undo(self):
         if self.item.scene():
@@ -44,7 +44,7 @@ class AddStateCommand(QUndoCommand):
         else:
             # po undo – stačí znovu přivázat k rodiči (do scény už se nevolá addItem)
             self.item.setParentItem(self.parent_obj)
-        self.item.setSelected(True)
+        #self.item.setSelected(True) - smazat, vse zustavalo diky tomu oznacene
 
     def undo(self):
         if self.item:

@@ -1,3 +1,4 @@
+[ ] Vyresit vsechny typy vztahu
 [x] "A can be as as1" ma byt "A is as1" (jedna se jen u jednoho stavu)
 [x] "agent funguje"
 [x] 'agent stavovy do procesu' -≥ "A in as1 handles B." opravit na "A at state as1 handles B."
@@ -12,33 +13,28 @@
 [ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
 [ ] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
 [ ] "exhibition-characterization stavovy"
-
-
-[ ] Vyresit vsechny typy vztahu
-
+----
 [ ] Vytvorit postranni listu s vlastnostmi
-
 [ ] Dat vsechny linky do toolbaru jako opcad
-
+---
 [ ] OPL ma mit bold pro nazvy objektu a procesu a stavu
-
+---
 [ ] veci jsou interni a externi
 [ ] veci jsou fyzicke a informacni
-
+---
 [ ] Posunout znacky linku doprostred cary
 [ ] Nahradit znacky spravymi
 [ ] Vyresit ortogonalitu vztahu
 [ ] Pridat kardinality
 [ ] vlastni labely linku
-
+---
 [ ] Poladit prompt
 [ ] Vymyslet priklady na demonstraci, ktere jsou funkci
-
+---
 [ ] generovat python kod z opl
 [ ] generovat navrhove vzory z opl
-
+---
 [ ] command undo a redo
-
-[ ] vytvorit simulacni model pomoci asi Petriho siti
-
 [ ] pridat zooming
+[ ] vytvorit simulacni model pomoci asi Petriho siti
+---
