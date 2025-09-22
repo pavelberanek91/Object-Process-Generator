@@ -72,31 +72,39 @@ class DeleteItemsCommand(QUndoCommand):
         self.links = list({id(x): x for x in self.links}.values())
 
     def redo(self):
+        # nejdřív linky, pak uzly
         for ln in self.links:
-            if ln.scene():
+            if ln.scene():  # pořád ve scéně?
                 ln.remove_refs()
                 self.scene.removeItem(ln)
+
         for it in self.items:
             if it.scene():
+                # odpoj linky uzlu
                 for ln in list(getattr(it, "_links", []) or []):
                     ln.remove_refs()
                     if ln.scene():
                         self.scene.removeItem(ln)
-                # DŮLEŽITÉ: odpojit state od parenta před removeItem
-                if isinstance(it, StateItem):
-                    it.setParentItem(None)
+
+                # odpoj linky stavů (children)
+                for ch in it.childItems():
+                    if isinstance(ch, StateItem):
+                        for ln in list(getattr(ch, "_links", []) or []):
+                            ln.remove_refs()
+                            if ln.scene():
+                                self.scene.removeItem(ln)
+
                 self.scene.removeItem(it)
 
     def undo(self):
-        # nejdřív vrátit uzly (StateItem bez addItem, jen parent); pak linky
+        # nejdřív vrať uzly
         for it in self.items:
             if not it.scene():
-                if isinstance(it, StateItem):
-                    parent = getattr(it, "_saved_parent", None)
-                    if parent:
-                        it.setParentItem(parent)   # do scény se dostane přes parenta
-                else:
-                    self.scene.addItem(it)        # top-level uzly se přidávají do scény
+                if isinstance(it, StateItem) and getattr(it, "_saved_parent", None):
+                    it.setParentItem(it._saved_parent)
+                self.scene.addItem(it)
+
+        # pak linky a přepočti jejich path
         for ln in self.links:
             if not ln.scene():
                 self.scene.addItem(ln)
@@ -109,38 +117,52 @@ class ClearAllCommand(QUndoCommand):
         self.scene = scene
         self.items = list(scene.items())
         self.links = []
+
         for it in self.items:
+            # seber linky přímo z uzlu
             if hasattr(it, "_links"):
                 self.links.extend(list(it._links or []))
+
+            # seber linky od stavů (děti objektů)
+            for ch in it.childItems():
+                if isinstance(ch, StateItem) and hasattr(ch, "_links"):
+                    self.links.extend(list(ch._links or []))
+                    ch._saved_parent = ch.parentItem()
+
             if isinstance(it, StateItem):
                 it._saved_parent = it.parentItem()
+
+        # linky mohou být i samostatně v items
         self.links.extend([it for it in self.items if isinstance(it, LinkItem)])
+        # udělej unikáty
         self.links = list({id(x): x for x in self.links}.values())
 
     def redo(self):
+        # nejdřív linky
         for ln in self.links:
             if ln.scene():
                 ln.remove_refs()
                 self.scene.removeItem(ln)
+
+        # pak všechny uzly
         for it in self.items:
             if it.scene():
-                if isinstance(it, StateItem):
-                    it.setParentItem(None)  # odpoj child
                 self.scene.removeItem(it)
 
     def undo(self):
+        # vrať uzly zpět (u stavů nastav rodiče)
         for it in self.items:
             if not it.scene():
-                if isinstance(it, StateItem):
-                    parent = getattr(it, "_saved_parent", None)
-                    if parent:
-                        it.setParentItem(parent)  # bez addItem
-                else:
-                    self.scene.addItem(it)        # top-level zpět do scény
+                if isinstance(it, StateItem) and getattr(it, "_saved_parent", None):
+                    it.setParentItem(it._saved_parent)
+                self.scene.addItem(it)
+
+        # pak linky zpět
         for ln in self.links:
             if not ln.scene():
                 self.scene.addItem(ln)
                 ln.update_path()
+
 
 
 # ---------- Set label ----------
