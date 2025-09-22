@@ -11,7 +11,9 @@ from PySide6.QtGui import (
     QImage,
     QKeySequence,
     QPainter,
-    QPalette
+    QPalette,
+    QUndoStack, 
+    QUndoCommand
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -35,6 +37,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QToolBar,
     QToolButton,
+    QUndoView,
     QVBoxLayout,
     QWidget,
 )
@@ -55,6 +58,8 @@ from persistence.json_io import (
     load_scene_from_json,
     safe_base_filename,
 )
+from undo.commands import DeleteItemsCommand, ClearAllCommand, AddStateCommand, AddNodeCommand
+
 
 
 class MainWindow(QMainWindow):
@@ -84,6 +89,10 @@ class MainWindow(QMainWindow):
         self.create_toolbar()
         self.create_prop_dock()
         #self.scene.selectionChanged.connect(self.sync_selected_to_props)
+
+    # Pomocník – tlač příkazy na undo stack
+    def push_cmd(self, cmd):
+        self.undo_stack.push(cmd)
 
     # --------- UI ----------
     def create_toolbar(self):
@@ -200,6 +209,15 @@ class MainWindow(QMainWindow):
         add_icon_btn(icon_shape("zoom_out"), "Zoom Out (Ctrl + Wheel)", self.zoom_out)
         tb.addSeparator()
         add_icon_btn(icon_shape("reset_zoom"), "Reset Zoom", self.zoom_reset)
+
+        # undo/redo prikazy
+        self.undo_stack = QUndoStack(self)
+        tb = self.addToolBar("Edit")
+        act_undo = self.undo_stack.createUndoAction(self, "Undo")
+        act_redo = self.undo_stack.createRedoAction(self, "Redo")
+        tb.addAction(act_undo); tb.addAction(act_redo)
+        act_undo.setShortcut("Ctrl+Z")
+        act_redo.setShortcut("Ctrl+Y")
 
     def _new_canvas(self, title: str | None = None):
         scene = GridScene(self)
@@ -330,18 +348,24 @@ class MainWindow(QMainWindow):
 
     # --------- Node ops ----------
     def add_object(self, pos: QPointF):
-        item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H)); item.setPos(self.snap(pos))
-        self.scene.addItem(item)
+        item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H))
+        item.setPos(self.snap(pos))
+        cmd = AddNodeCommand(self.scene, item, "Add Object")
+        self.push_cmd(cmd)
 
     def add_process(self, pos: QPointF):
-        item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H)); item.setPos(self.snap(pos))
-        self.scene.addItem(item)
+        item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H))
+        item.setPos(self.snap(pos))
+        cmd = AddNodeCommand(self.scene, item, "Add Process")
+        self.push_cmd(cmd)
 
     def add_state(self, obj: ObjectItem, pos_in_scene: QPointF):
-        p = obj.mapFromScene(self.snap(pos_in_scene)); r = obj.rect()
+        p = obj.mapFromScene(self.snap(pos_in_scene))
+        r = obj.rect()
         x = min(max(p.x()-STATE_W/2, r.left()+6), r.right()-STATE_W-6)
         y = min(max(p.y()-STATE_H/2, r.top()+6),  r.bottom()-STATE_H-6)
-        self.scene.addItem(StateItem(obj, QRectF(x, y, STATE_W, STATE_H)))
+        rect = QRectF(x, y, STATE_W, STATE_H)
+        self.push_cmd(AddStateCommand(self.scene, obj, rect, "State"))
 
 
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
@@ -394,16 +418,15 @@ class MainWindow(QMainWindow):
             self.statusBar().clearMessage()
 
     def delete_selected(self):
-        for it in list(self.scene.selectedItems()):
-            if isinstance(it, LinkItem):
-                it.remove_refs(); self.scene.removeItem(it)
-            elif isinstance(it, (ObjectItem, ProcessItem, StateItem)):
-                for ln in list(getattr(it, "_links", []) or []):
-                    ln.remove_refs(); self.scene.removeItem(ln)
-                self.scene.removeItem(it)
+        items = self.scene.selectedItems()
+        if not items:
+            return
+        self.push_cmd(DeleteItemsCommand(self.scene, items))
 
     def clear_all(self):
-        self.view.clear_overlays(); self.pending_link_src = None; self.scene.clear()
+        if not self.scene.items():
+            return
+        self.push_cmd(ClearAllCommand(self.scene))
 
     # --------- Properties ----------
     def selected_item(self) -> Optional[QGraphicsItem]:

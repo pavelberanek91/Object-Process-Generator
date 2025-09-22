@@ -178,8 +178,22 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             QGraphicsItem.ItemIsSelectable |
             QGraphicsItem.ItemSendsGeometryChanges
         )
+
+        # registruj se k rodiči - pro redu command at funguje presun s rodicem
+        if not hasattr(parent_obj, "_states"):
+            parent_obj._states = []
+        parent_obj._states.append(self)
+
         # voláme bez argumentů, jako u ObjectItem a ProcessItem
         self._init_resize()
+
+    def remove_from_parent(self):
+        """Odregistrování stavu od rodiče (při mazání/undo)."""
+        if hasattr(self.parent_obj, "_states"):
+            try:
+                self.parent_obj._states.remove(self)
+            except ValueError:
+                pass
 
     def boundingRect(self) -> QRectF:
         m = 6

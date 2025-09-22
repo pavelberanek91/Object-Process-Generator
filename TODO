@@ -8,12 +8,12 @@
 [x] 'consumption stavovy do procesu'  -≥ "B consumes A in as1." opravit na "B consumes A at state as1."
 [x] "result"
 [x] "result stavovy" -≥ ta sama oprava na at state
-[ ] "input a output link pair" -≥ "ted to mam takes input a yields", musi byt input i output a pak bude hlaska "B changes A from as1 to as2"
+[x] "input a output link pair" -≥ "ted to mam takes input a yields", musi byt input i output a pak bude hlaska "B changes A from as1 to as2"
+[ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
 [ ] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
 [ ] "exhibition-characterization stavovy"
 
 
-[ ] Vyresit kreaci, zmenu stavu a destrukci
 [ ] Vyresit vsechny typy vztahu
 
 [ ] Vytvorit postranni listu s vlastnostmi
