@@ -43,7 +43,7 @@ class LinkItem(QGraphicsPathItem):
         "instrument": {"circle": ("hollow", "dst")},
         "aggregation": {"marker": ("diamond_filled", "dst")},
         "exhibition": {"marker": ("square_open", "dst")},
-        "generalization": {"marker": ("triangle_open", "dst")},
+        "generalization": {"marker": ("triangle_open", "dst"), "arrow_flip": True},
         "instantiation": {"marker": ("circle_filled", "dst")},
     }
     
@@ -226,7 +226,8 @@ class LinkItem(QGraphicsPathItem):
                 draw_arrow_at(mid, angle)
             if style.get("marker"):
                 kind, _end = style["marker"]
-                self._draw_marker(painter, mid, angle, kind)
+                ang = angle + (math.pi if link_type == "generalization" else 0.0)
+                self._draw_marker(painter, mid, ang, kind)
             if style.get("circle"):
                 fill_kind, _end = style["circle"]
                 pos = mid
