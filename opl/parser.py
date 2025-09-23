@@ -165,7 +165,7 @@ def build_from_opl(app, text: str):
         if m:
             whole = get_or_create_object(m.group("whole"))
             for part in _split_names(m.group("parts")):
-                ensure_link(get_or_create_object(part), whole, "aggregation")
+                ensure_link(whole, get_or_create_object(part), "aggregation")
             continue
 
         m = RE_CHARAC.match(line)
