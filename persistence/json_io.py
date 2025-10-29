@@ -60,6 +60,7 @@ def scene_to_dict(scene) -> Dict[str, Any]:
                 y=r_scene.center().y(),
                 w=r_scene.width(),
                 h=r_scene.height(),
+                parent_process_id=getattr(it, 'parent_process_id', None),
                 essence=it.essence,
                 affiliation=it.affiliation
             ))
@@ -126,6 +127,7 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
                 affiliation=n.get("affiliation", "systemic")
             )
             it.node_id = n["id"]
+            it.parent_process_id = n.get("parent_process_id")
             it.setPos(pos)
             scene.addItem(it)
             id_to_item[n["id"]] = it
@@ -139,6 +141,7 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
                 affiliation=n.get("affiliation", "systemic")
             )
             it.node_id = n["id"]
+            it.parent_process_id = n.get("parent_process_id")
             it.setPos(QPointF(n["x"], n["y"]))
             scene.addItem(it); id_to_item[n["id"]] = it
             

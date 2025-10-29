@@ -83,6 +83,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         self.init_node("object", label)
         self.essence = essence  # "physical" nebo "informational"
         self.affiliation = affiliation  # "systemic" nebo "environmental"
+        self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento objekt
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(0, 128, 0), 2))  # Tmavě zelený obrys
         self._init_resize()  # Přidá resize handles
@@ -197,6 +198,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         self.init_node("process", label)
         self.essence = essence  # "physical" nebo "informational"
         self.affiliation = affiliation  # "systemic" nebo "environmental"
+        self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento proces
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(Qt.black, 2))
         self._init_resize()  # Přidá resize handles

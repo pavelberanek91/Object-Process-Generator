@@ -17,6 +17,7 @@ class DiagramNode:
         w: Šířka uzlu
         h: Výška uzlu
         parent_id: ID rodičovského uzlu (pouze pro stavy, které jsou vždy uvnitř objektu)
+        parent_process_id: ID rodičovského procesu (pro podprocesy a objekty v in-zoom view)
         essence: Podstata ("physical" nebo "informational", pouze pro objekty a procesy)
         affiliation: Příslušnost ("systemic" nebo "environmental", pouze pro objekty a procesy)
     """
@@ -28,6 +29,7 @@ class DiagramNode:
     w: float
     h: float
     parent_id: Optional[str] = None
+    parent_process_id: Optional[str] = None
     essence: str = "physical"
     affiliation: str = "systemic"
 

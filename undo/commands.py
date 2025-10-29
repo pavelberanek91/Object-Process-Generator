@@ -30,11 +30,26 @@ class AddNodeCommand(QUndoCommand):
         """Přidá uzel do scény (pokud tam ještě není)."""
         if not self.item.scene():
             self.scene.addItem(self.item)
+        self._sync_to_global_model()
 
     def undo(self):
         """Odstraní uzel ze scény."""
         if self.item.scene():
             self.scene.removeItem(self.item)
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            parent_process_id = None
+            for i in range(main_win.tabs.count()):
+                view = main_win.tabs.widget(i)
+                if view.scene() == self.scene:
+                    parent_process_id = getattr(view, 'zoomed_process_id', None)
+                    break
+            main_win.sync_scene_to_global_model(self.scene, parent_process_id)
 
 
 class AddStateCommand(QUndoCommand):
@@ -60,6 +75,7 @@ class AddStateCommand(QUndoCommand):
         else:
             # Po undo: znovu přiváže k rodiči
             self.item.setParentItem(self.parent_obj)
+        self._sync_to_global_model()
 
     def undo(self):
         """Odstraní stav ze scény."""
@@ -69,6 +85,20 @@ class AddStateCommand(QUndoCommand):
             # Pak teprve odstraní ze scény
             if self.item.scene():
                 self.scene.removeItem(self.item)
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            parent_process_id = None
+            for i in range(main_win.tabs.count()):
+                view = main_win.tabs.widget(i)
+                if view.scene() == self.scene:
+                    parent_process_id = getattr(view, 'zoomed_process_id', None)
+                    break
+            main_win.sync_scene_to_global_model(self.scene, parent_process_id)
 
 
 
@@ -125,6 +155,8 @@ class DeleteItemsCommand(QUndoCommand):
                                 self.scene.removeItem(ln)
 
                 self.scene.removeItem(it)
+        
+        self._sync_to_global_model()
 
     def undo(self):
         """Vrátí smazané prvky zpět do scény."""
@@ -141,6 +173,21 @@ class DeleteItemsCommand(QUndoCommand):
             if not ln.scene():
                 self.scene.addItem(ln)
                 ln.update_path()  # Přepočítá cestu vazby
+        
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            parent_process_id = None
+            for i in range(main_win.tabs.count()):
+                view = main_win.tabs.widget(i)
+                if view.scene() == self.scene:
+                    parent_process_id = getattr(view, 'zoomed_process_id', None)
+                    break
+            main_win.sync_scene_to_global_model(self.scene, parent_process_id)
 
 
 class ClearAllCommand(QUndoCommand):
@@ -185,6 +232,8 @@ class ClearAllCommand(QUndoCommand):
         for it in self.items:
             if it.scene():
                 self.scene.removeItem(it)
+        
+        self._sync_to_global_model()
 
     def undo(self):
         # vrať uzly zpět (u stavů nastav rodiče)
@@ -199,6 +248,21 @@ class ClearAllCommand(QUndoCommand):
             if not ln.scene():
                 self.scene.addItem(ln)
                 ln.update_path()
+        
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            parent_process_id = None
+            for i in range(main_win.tabs.count()):
+                view = main_win.tabs.widget(i)
+                if view.scene() == self.scene:
+                    parent_process_id = getattr(view, 'zoomed_process_id', None)
+                    break
+            main_win.sync_scene_to_global_model(self.scene, parent_process_id)
 
 
 
@@ -218,11 +282,31 @@ class SetLabelCommand(QUndoCommand):
         """Nastaví nový label."""
         if hasattr(self.item, "set_label"):
             self.item.set_label(self.new)
+        # Aktualizuj globální model a hierarchický panel
+        self._sync_to_global_model()
 
     def undo(self):
         """Obnoví starý label."""
         if hasattr(self.item, "set_label"):
             self.item.set_label(self.old)
+        # Aktualizuj globální model a hierarchický panel
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            scene = self.item.scene()
+            if scene:
+                # Najdi view pro tuto scénu
+                parent_process_id = None
+                for i in range(main_win.tabs.count()):
+                    view = main_win.tabs.widget(i)
+                    if view.scene() == scene:
+                        parent_process_id = getattr(view, 'zoomed_process_id', None)
+                        break
+                main_win.sync_scene_to_global_model(scene, parent_process_id)
 
 # ---------- Change link type ----------
 class SetLinkTypeCommand(QUndoCommand):
@@ -250,11 +334,28 @@ class MoveItemCommand(QUndoCommand):
         self.item.setPos(self.new)
         for ln in getattr(self.item, "_links", []) or []:
             ln.update_path()
+        self._sync_to_global_model()
 
     def undo(self):
         self.item.setPos(self.old)
         for ln in getattr(self.item, "_links", []) or []:
             ln.update_path()
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            scene = self.item.scene()
+            if scene:
+                parent_process_id = None
+                for i in range(main_win.tabs.count()):
+                    view = main_win.tabs.widget(i)
+                    if view.scene() == scene:
+                        parent_process_id = getattr(view, 'zoomed_process_id', None)
+                        break
+                main_win.sync_scene_to_global_model(scene, parent_process_id)
 
 # ---------- Resize item ----------
 class ResizeItemCommand(QUndoCommand):
@@ -268,8 +369,25 @@ class ResizeItemCommand(QUndoCommand):
         self.item.setRect(self.new)
         for ln in getattr(self.item, "_links", []) or []:
             ln.update_path()
+        self._sync_to_global_model()
 
     def undo(self):
         self.item.setRect(self.old)
         for ln in getattr(self.item, "_links", []) or []:
             ln.update_path()
+        self._sync_to_global_model()
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            scene = self.item.scene()
+            if scene:
+                parent_process_id = None
+                for i in range(main_win.tabs.count()):
+                    view = main_win.tabs.widget(i)
+                    if view.scene() == scene:
+                        parent_process_id = getattr(view, 'zoomed_process_id', None)
+                        break
+                main_win.sync_scene_to_global_model(scene, parent_process_id)
