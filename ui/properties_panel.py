@@ -51,7 +51,22 @@ class PropertiesPanel(QDockWidget):
         # typ linku
         self.lbl_link_type = QLabel("Link type", self.panel_props)
         self.cmb_link_type = QComboBox(self.panel_props)
-        self.cmb_link_type.addItems(LINK_TYPES)
+        
+        # Přidej procedurální linky
+        self.cmb_link_type.addItem("─── Procedural ───")
+        self.cmb_link_type.model().item(0).setEnabled(False)  # Zakáže výběr nadpisu
+        self.cmb_link_type.addItems([
+            "input", "consumption", "output", "result", "effect", "agent", "instrument"
+        ])
+        
+        # Přidej oddělovač a strukturální linky
+        self.cmb_link_type.insertSeparator(8)  # Po 7 procedurálních + 1 nadpis
+        self.cmb_link_type.addItem("─── Structural ───")
+        self.cmb_link_type.model().item(9).setEnabled(False)  # Zakáže výběr nadpisu
+        self.cmb_link_type.addItems([
+            "aggregation", "exhibition", "generalization", "instantiation"
+        ])
+        
         self.cmb_link_type.currentTextChanged.connect(self._on_link_type_changed)
         form.addRow(self.lbl_link_type, self.cmb_link_type)
         
@@ -221,6 +236,10 @@ class PropertiesPanel(QDockWidget):
     
     def _on_link_type_changed(self, text: str):
         """Handler pro změnu typu linku."""
+        # Ignoruj nadpisy (obsahují "───")
+        if "───" in text:
+            return
+            
         if not self.main_window:
             return
             

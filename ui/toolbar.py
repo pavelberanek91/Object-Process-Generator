@@ -211,10 +211,25 @@ class ToolbarManager:
         
         # Combo pro default link type
         self.main_window.cmb_default_link_type = QComboBox()
-        self.main_window.cmb_default_link_type.addItems(LINK_TYPES)
+        
+        # Přidej procedurální linky
+        self.main_window.cmb_default_link_type.addItem("─── Procedural ───")
+        self.main_window.cmb_default_link_type.model().item(0).setEnabled(False)
+        self.main_window.cmb_default_link_type.addItems([
+            "input", "consumption", "output", "result", "effect", "agent", "instrument"
+        ])
+        
+        # Přidej oddělovač a strukturální linky
+        self.main_window.cmb_default_link_type.insertSeparator(8)
+        self.main_window.cmb_default_link_type.addItem("─── Structural ───")
+        self.main_window.cmb_default_link_type.model().item(9).setEnabled(False)
+        self.main_window.cmb_default_link_type.addItems([
+            "aggregation", "exhibition", "generalization", "instantiation"
+        ])
+        
         self.main_window.cmb_default_link_type.setCurrentText(self.main_window.default_link_type)
         self.main_window.cmb_default_link_type.currentTextChanged.connect(
-            lambda text: setattr(self.main_window, "default_link_type", text)
+            lambda text: setattr(self.main_window, "default_link_type", text) if "───" not in text else None
         )
         tb.addWidget(QLabel("Default Link:"))
         tb.addWidget(self.main_window.cmb_default_link_type)
