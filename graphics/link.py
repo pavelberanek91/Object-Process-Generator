@@ -9,12 +9,40 @@ Implementuje:
 from __future__ import annotations
 import math
 from typing import Tuple
+from pathlib import Path
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QPainterPath, QPen, QPainter, QPolygonF
+from PySide6.QtGui import QPainterPath, QPen, QPainter, QPolygonF, QPixmap, QTransform
 from PySide6.QtWidgets import (
     QGraphicsPathItem, QGraphicsItem, QGraphicsSimpleTextItem, QGraphicsEllipseItem,
     QGraphicsRectItem, QStyle
 )
+
+
+# Načtení ikon pro strukturální vztahy
+_STRUCTURAL_ICONS = {}
+
+def _load_structural_icons():
+    """Načte PNG ikony pro strukturální vztahy ze složky ui/icons/"""
+    if _STRUCTURAL_ICONS:
+        return  # Už načteno
+    
+    icons_dir = Path(__file__).parent.parent / "ui" / "icons"
+    
+    # Mapování typu vazby na název souboru (kvůli různým pravopisům)
+    icon_files = {
+        "aggregation": "aggregation",
+        "exhibition": "exhibition", 
+        "generalization": "generalization",
+        "instantiation": "instatiation"  # Soubor má překlep, ale zachováváme ho
+    }
+    
+    for link_type, filename in icon_files.items():
+        png_path = icons_dir / f"{filename}.png"
+        if png_path.exists():
+            pixmap = QPixmap(str(png_path))
+            _STRUCTURAL_ICONS[link_type] = pixmap
+        else:
+            _STRUCTURAL_ICONS[link_type] = None
 
 
 class LabelHandle(QGraphicsSimpleTextItem):
@@ -65,6 +93,7 @@ class LinkItem(QGraphicsPathItem):
 
     def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="input", label: str=""):
         super().__init__()
+        _load_structural_icons()  # Načteme ikony při první inicializaci
         self.setZValue(1)
         self.setFlags(QGraphicsItem.ItemIsSelectable)
         self.src = src
@@ -231,24 +260,53 @@ class LinkItem(QGraphicsPathItem):
             p1 = point + QPointF(-arrow_size*math.cos(ang - math.pi/6), -arrow_size*math.sin(ang - math.pi/6))
             p2 = point + QPointF(-arrow_size*math.cos(ang + math.pi/6), -arrow_size*math.sin(ang + math.pi/6))
             poly = QPolygonF([point, p1, p2])
-            painter.setBrush(Qt.NoBrush if open and not selected else (Qt.blue if selected else Qt.black))
+            # OPM standard: bílá výplň s černým ohraničením (nebo modrá když je vybraná)
+            if selected:
+                painter.setBrush(Qt.blue)
+            else:
+                painter.setBrush(Qt.white)
             painter.drawPolygon(poly)
             
         if link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
             # kreslíme do středu
-            if style.get("arrow"):
-                draw_arrow_at(mid, angle)
-            if style.get("marker"):
-                kind, _end = style["marker"]
-                ang = angle + (math.pi if link_type == "generalization" else 0.0)
-                self._draw_marker(painter, mid, ang, kind)
-            if style.get("circle"):
-                fill_kind, _end = style["circle"]
-                pos = mid
+            # Zkusíme použít PNG ikonu
+            icon_pixmap = _STRUCTURAL_ICONS.get(link_type)
+            
+            if icon_pixmap and not icon_pixmap.isNull():
+                # Vykreslíme ikonu
                 painter.save()
-                painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
-                painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
+                
+                # Přesuneme se do středu vazby
+                painter.translate(mid)
+                
+                # Rotace podle směru vazby
+                rotation_angle = math.degrees(angle)
+                painter.rotate(rotation_angle)
+                
+                # Vykreslíme ikonu vystředěnou
+                icon_size = icon_pixmap.size()
+                painter.drawPixmap(
+                    -icon_size.width() // 2,
+                    -icon_size.height() // 2,
+                    icon_pixmap
+                )
+                
                 painter.restore()
+            else:
+                # Fallback na původní programatické kreslení
+                if style.get("arrow"):
+                    draw_arrow_at(mid, angle)
+                if style.get("marker"):
+                    kind, _end = style["marker"]
+                    ang = angle + (math.pi if link_type == "generalization" else 0.0)
+                    self._draw_marker(painter, mid, ang, kind)
+                if style.get("circle"):
+                    fill_kind, _end = style["circle"]
+                    pos = mid
+                    painter.save()
+                    painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
+                    painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
+                    painter.restore()
         else:
             # původní chování – kreslení na konce
             am = style.get("arrow")

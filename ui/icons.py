@@ -3,24 +3,72 @@
 Vytváří vektorové ikony přímo v kódu pomocí QPainter pro:
 - Tvary prvků (object, process, state, link)
 - Nástroje (cursor, delete, zoom in/out, reset zoom)
+
+Podporuje také načítání ikon ze souborů (PNG, SVG) ze složky ui/icons/
 """
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QPainterPath
+from PySide6.QtSvg import QSvgRenderer
 import math
+from pathlib import Path
+
+
+def _load_icon_from_file(kind: str, size: int = 22) -> QIcon | None:
+    """
+    Pokusí se načíst ikonu ze souboru ui/icons/{kind}.svg nebo {kind}.png
+    
+    Args:
+        kind: Název ikony (např. "aggregation", "exhibition")
+        size: Velikost ikony v pixelech
+    
+    Returns:
+        QIcon pokud soubor existuje, jinak None
+    """
+    icons_dir = Path(__file__).parent / "icons"
+    
+    # Nejdřív zkusíme SVG (vektorové, lépe škálují)
+    svg_path = icons_dir / f"{kind}.svg"
+    if svg_path.exists():
+        renderer = QSvgRenderer(str(svg_path))
+        if renderer.isValid():
+            pm = QPixmap(size, size)
+            pm.fill(Qt.transparent)
+            painter = QPainter(pm)
+            painter.setRenderHint(QPainter.Antialiasing)
+            renderer.render(painter)
+            painter.end()
+            return QIcon(pm)
+    
+    # Pokud SVG není, zkusíme PNG
+    png_path = icons_dir / f"{kind}.png"
+    if png_path.exists():
+        return QIcon(str(png_path))
+    
+    return None
 
 
 def icon_shape(kind: str, size: int = 22) -> QIcon:
     """
     Vytvoří vektorovou ikonu pro daný typ prvku/nástroje.
     
+    Nejdříve se pokusí načíst ikonu ze souboru ui/icons/{kind}.svg nebo {kind}.png.
+    Pokud soubor neexistuje, vygeneruje ikonu v kódu.
+    
     Args:
         kind: Typ ikony ("object", "process", "state", "link", "cursor", "delete", 
-              "zoom_in", "zoom_out", "reset_zoom")
+              "zoom_in", "zoom_out", "reset_zoom", "aggregation", "exhibition", 
+              "generalization", "instantiation")
         size: Velikost ikony v pixelech (výchozí 22)
     
     Returns:
         QIcon s vykreslenou ikonou
     """
+    # Zkusíme nejdřív načíst ikonu ze souboru
+    file_icon = _load_icon_from_file(kind, size)
+    if file_icon is not None:
+        return file_icon
+    
+    # Pokud soubor neexistuje, vygenerujeme ikonu v kódu
     pm = QPixmap(size, size)
     pm.fill(Qt.transparent)
     p = QPainter(pm)
