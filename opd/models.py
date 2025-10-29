@@ -17,6 +17,8 @@ class DiagramNode:
         w: Šířka uzlu
         h: Výška uzlu
         parent_id: ID rodičovského uzlu (pouze pro stavy, které jsou vždy uvnitř objektu)
+        essence: Podstata ("physical" nebo "informational", pouze pro objekty a procesy)
+        affiliation: Příslušnost ("systemic" nebo "environmental", pouze pro objekty a procesy)
     """
     id: str
     kind: str
@@ -26,6 +28,8 @@ class DiagramNode:
     w: float
     h: float
     parent_id: Optional[str] = None
+    essence: str = "physical"
+    affiliation: str = "systemic"
 
 
 @dataclass

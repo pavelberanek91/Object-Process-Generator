@@ -78,9 +78,11 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Může obsahovat stavy (StateItem jako potomky)
     - Podporuje změnu velikosti pomocí resize handles
     """
-    def __init__(self, rect: QRectF, label: str = "Object"):
+    def __init__(self, rect: QRectF, label: str = "Object", essence: str = "physical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("object", label)
+        self.essence = essence  # "physical" nebo "informational"
+        self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(0, 128, 0), 2))  # Tmavě zelený obrys
         self._init_resize()  # Přidá resize handles
@@ -90,7 +92,21 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         return super().boundingRect().adjusted(-m, -m, m, m)
 
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setPen(self.pen())
+        # Nastavení pera podle affiliation
+        pen = QPen(self.pen())
+        if self.affiliation == "environmental":
+            pen.setStyle(Qt.DashLine)
+        else:
+            pen.setStyle(Qt.SolidLine)
+        
+        # Stín pro fyzické objekty
+        if self.essence == "physical":
+            shadow_offset = 8
+            painter.setBrush(QColor(80, 80, 80, 120))
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset), 12, 12)
+        
+        painter.setPen(pen)
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), 12, 12)
 
@@ -175,9 +191,11 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     - Bílá výplň
     - Podporuje změnu velikosti pomocí resize handles
     """
-    def __init__(self, rect: QRectF, label: str = "Process"):
+    def __init__(self, rect: QRectF, label: str = "Process", essence: str = "physical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("process", label)
+        self.essence = essence  # "physical" nebo "informational"
+        self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(Qt.black, 2))
         self._init_resize()  # Přidá resize handles
@@ -199,8 +217,22 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         return super().boundingRect().adjusted(-m, -m, m, m)
 
     def paint(self, painter: QPainter, option, widget=None):
+        # Nastavení pera podle affiliation
+        pen = QPen(QColor(0, 0, 128), 3)
+        if self.affiliation == "environmental":
+            pen.setStyle(Qt.DashLine)
+        else:
+            pen.setStyle(Qt.SolidLine)
+        
+        # Stín pro fyzické procesy
+        if self.essence == "physical":
+            shadow_offset = 8
+            painter.setBrush(QColor(80, 80, 80, 120))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset))
+        
         # vykresli obrys (modrý)
-        painter.setPen(QPen(QColor(0, 0, 128), 3))
+        painter.setPen(pen)
         painter.setBrush(self.brush())
         painter.drawEllipse(self.rect())
 

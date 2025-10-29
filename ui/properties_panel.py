@@ -34,6 +34,20 @@ class PropertiesPanel(QDockWidget):
         self.ed_label.editingFinished.connect(self._on_label_changed)
         form.addRow(self.lbl_label, self.ed_label)
 
+        # essence (podstata)
+        self.lbl_essence = QLabel("Essence", self.panel_props)
+        self.cmb_essence = QComboBox(self.panel_props)
+        self.cmb_essence.addItems(["physical", "informational"])
+        self.cmb_essence.currentTextChanged.connect(self._on_essence_changed)
+        form.addRow(self.lbl_essence, self.cmb_essence)
+
+        # affiliation (příslušnost)
+        self.lbl_affiliation = QLabel("Affiliation", self.panel_props)
+        self.cmb_affiliation = QComboBox(self.panel_props)
+        self.cmb_affiliation.addItems(["systemic", "environmental"])
+        self.cmb_affiliation.currentTextChanged.connect(self._on_affiliation_changed)
+        form.addRow(self.lbl_affiliation, self.cmb_affiliation)
+
         # typ linku
         self.lbl_link_type = QLabel("Link type", self.panel_props)
         self.cmb_link_type = QComboBox(self.panel_props)
@@ -70,6 +84,10 @@ class PropertiesPanel(QDockWidget):
         # defaultně schováme vše, co nemá být vidět
         self.lbl_label.hide()
         self.ed_label.hide()
+        self.lbl_essence.hide()
+        self.cmb_essence.hide()
+        self.lbl_affiliation.hide()
+        self.cmb_affiliation.hide()
         self.lbl_link_type.hide()
         self.cmb_link_type.hide()
         self.ed_card_src.hide()
@@ -77,8 +95,22 @@ class PropertiesPanel(QDockWidget):
         self.lbl_card_src.hide()
         self.lbl_card_dst.hide()
 
-        if isinstance(it, (ObjectItem, ProcessItem, StateItem)):
-            # Objekt / proces / stav → má label
+        if isinstance(it, (ObjectItem, ProcessItem)):
+            # Objekt / proces → má label + essence + affiliation
+            self.lbl_label.show()
+            self.ed_label.show()
+            self.ed_label.setEnabled(True)
+            self.ed_label.setText(it.label)
+            
+            self.lbl_essence.show()
+            self.cmb_essence.show()
+            self.cmb_essence.setCurrentText(it.essence)
+            
+            self.lbl_affiliation.show()
+            self.cmb_affiliation.show()
+            self.cmb_affiliation.setCurrentText(it.affiliation)
+        elif isinstance(it, StateItem):
+            # Stav → má jen label
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
@@ -160,6 +192,20 @@ class PropertiesPanel(QDockWidget):
             it.set_card_src(self.ed_card_src.text())
             it.set_card_dst(self.ed_card_dst.text())
             it.update_path()
+    
+    def _on_essence_changed(self, text: str):
+        """Handler pro změnu essence (physical/informational)."""
+        it = self._get_selected_item()
+        if isinstance(it, (ObjectItem, ProcessItem)):
+            it.essence = text
+            it.update()
+    
+    def _on_affiliation_changed(self, text: str):
+        """Handler pro změnu affiliation (systemic/environmental)."""
+        it = self._get_selected_item()
+        if isinstance(it, (ObjectItem, ProcessItem)):
+            it.affiliation = text
+            it.update()
     
     def _on_link_type_changed(self, text: str):
         """Handler pro změnu typu linku."""

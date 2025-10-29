@@ -59,7 +59,9 @@ def scene_to_dict(scene) -> Dict[str, Any]:
                 x=r_scene.center().x(),
                 y=r_scene.center().y(),
                 w=r_scene.width(),
-                h=r_scene.height()
+                h=r_scene.height(),
+                essence=it.essence,
+                affiliation=it.affiliation
             ))
             if isinstance(it, ObjectItem):
                 for ch in it.childItems():
@@ -117,7 +119,12 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
         kind = n["kind"]
         pos = QPointF(n["x"], n["y"])
         if kind == "object":
-            it = ObjectItem(QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), n["label"])
+            it = ObjectItem(
+                QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), 
+                n["label"],
+                essence=n.get("essence", "physical"),
+                affiliation=n.get("affiliation", "systemic")
+            )
             it.node_id = n["id"]
             it.setPos(pos)
             scene.addItem(it)
@@ -125,7 +132,12 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
             
     for n in data.get("nodes", []):
         if n["kind"] == "process":
-            it = ProcessItem(QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), n["label"])
+            it = ProcessItem(
+                QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), 
+                n["label"],
+                essence=n.get("essence", "physical"),
+                affiliation=n.get("affiliation", "systemic")
+            )
             it.node_id = n["id"]
             it.setPos(QPointF(n["x"], n["y"]))
             scene.addItem(it); id_to_item[n["id"]] = it
