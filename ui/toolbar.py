@@ -216,7 +216,7 @@ class ToolbarManager:
         self.main_window.cmb_default_link_type.addItem("─── Procedural ───")
         self.main_window.cmb_default_link_type.model().item(0).setEnabled(False)
         self.main_window.cmb_default_link_type.addItems([
-            "input", "consumption", "output", "result", "effect", "agent", "instrument"
+            "input", "output", "consumption", "result", "effect", "agent", "instrument"
         ])
         
         # Přidej oddělovač a strukturální linky

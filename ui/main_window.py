@@ -4,6 +4,7 @@ from typing import Optional
 
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import (
+    QAction,
     QImage,
     QPainter,
     QUndoStack,
@@ -76,6 +77,7 @@ class MainWindow(QMainWindow):
         # Inicializace UI
         self._init_tabs()
         self._init_first_canvas()
+        self._init_actions()
         self._init_toolbars()
         self._init_properties_panel()
         self._init_hierarchy_panel()
@@ -93,6 +95,14 @@ class MainWindow(QMainWindow):
     def _init_first_canvas(self):
         """Vytvoří první canvas."""
         self._new_canvas("🏠 Root Canvas")
+    
+    def _init_actions(self):
+        """Inicializuje akce a klávesové zkratky."""
+        # Select All (Ctrl+A)
+        select_all_action = QAction("Označit vše", self)
+        select_all_action.setShortcut(QKeySequence.SelectAll)
+        select_all_action.triggered.connect(self.select_all)
+        self.addAction(select_all_action)
     
     def _init_toolbars(self):
         """Inicializuje toolbary."""
@@ -133,6 +143,18 @@ class MainWindow(QMainWindow):
         """Vrátí první vybraný prvek nebo None."""
         sel = self.scene.selectedItems()
         return sel[0] if sel else None
+    
+    def select_all(self):
+        """Označí všechny prvky v aktuální scéně."""
+        if not hasattr(self, 'scene') or self.scene is None:
+            return
+        
+        # Označíme všechny prvky, které jsou označitelné
+        for item in self.scene.items():
+            if item.flags() & QGraphicsItem.ItemIsSelectable:
+                item.setSelected(True)
+        
+        self.statusBar().showMessage(f"Označeno {len(self.scene.selectedItems())} prvků", 2000)
     
     # ========== Global data model synchronization ==========
     
