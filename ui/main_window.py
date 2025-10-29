@@ -36,8 +36,16 @@ from undo.commands import DeleteItemsCommand, ClearAllCommand, AddStateCommand, 
 class MainWindow(QMainWindow):
     """Hlavní okno aplikace OPM Editor."""
     
+    _instance = None
+    
+    @classmethod
+    def instance(cls):
+        """Vrátí instanci MainWindow (singleton pattern)."""
+        return cls._instance
+    
     def __init__(self):
         super().__init__()
+        MainWindow._instance = self
         self.setWindowTitle("OPM Editor — MVP")
         
         # Inicializace stavových proměnných

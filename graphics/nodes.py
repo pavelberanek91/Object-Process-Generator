@@ -117,8 +117,10 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     def mouseDoubleClickEvent(self, event):
         # dvojklik kamkoli do objektu = přidání stavu
         if event.button() == Qt.LeftButton:
-            from app import App  # lazy import, aby se nezacyklil
-            App.instance().add_state(self, event.scenePos())
+            from ui.main_window import MainWindow  # lazy import, aby se nezacyklil
+            main_win = MainWindow.instance()
+            if main_win:
+                main_win.add_state(self, event.scenePos())
             event.accept()
             return
         super().mouseDoubleClickEvent(event)
