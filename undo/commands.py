@@ -295,6 +295,8 @@ class SetLabelCommand(QUndoCommand):
     def _sync_to_global_model(self):
         """Synchronizuje změnu do globálního modelu."""
         from ui.main_window import MainWindow
+        from graphics.nodes import ProcessItem
+        
         main_win = MainWindow.instance()
         if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
             scene = self.item.scene()
@@ -307,6 +309,17 @@ class SetLabelCommand(QUndoCommand):
                         parent_process_id = getattr(view, 'zoomed_process_id', None)
                         break
                 main_win.sync_scene_to_global_model(scene, parent_process_id)
+                
+                # Pokud byl přejmenován proces, aktualizuj názvy tabů
+                if isinstance(self.item, ProcessItem):
+                    process_id = self.item.node_id
+                    new_label = self.item.label
+                    
+                    # Aktualizuj názvy všech tabů, které zobrazují tento proces
+                    for i in range(main_win.tabs.count()):
+                        view = main_win.tabs.widget(i)
+                        if hasattr(view, 'zoomed_process_id') and view.zoomed_process_id == process_id:
+                            main_win.tabs.setTabText(i, f"🔍 {new_label}")
 
 # ---------- Change link type ----------
 class SetLinkTypeCommand(QUndoCommand):

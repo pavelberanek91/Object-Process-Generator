@@ -65,6 +65,11 @@ class MainWindow(QMainWindow):
             "meta": {"format": "opm-mvp-json", "version": 1}
         }
         
+        # Ochrana proti rekurzivním voláním
+        self._is_syncing = False
+        self._is_refreshing_hierarchy = False
+        self._is_navigating = False
+        
         # Inicializace UI
         self._init_tabs()
         self._init_first_canvas()
@@ -135,39 +140,51 @@ class MainWindow(QMainWindow):
             scene: Scéna k synchronizaci (default: aktuální scéna)
             parent_process_id: ID rodičovského procesu pro tuto scénu
         """
-        if scene is None:
-            scene = self.scene
+        # Ochrana proti rekurzivním voláním
+        if self._is_syncing:
+            return
         
-        from persistence.json_io import scene_to_dict
-        from opd.models import DiagramNode, DiagramLink
-        
-        # Převeď scénu na slovník
-        scene_data = scene_to_dict(scene)
-        
-        # Nastav parent_process_id pro uzly v této scéně
-        for node in scene_data["nodes"]:
-            if node.get("kind") in ("object", "process"):
-                node["parent_process_id"] = parent_process_id
-        
-        # Odstraň staré uzly a linky z této scény
-        self._global_diagram_data["nodes"] = [
-            n for n in self._global_diagram_data["nodes"]
-            if n.get("parent_process_id") != parent_process_id
-        ]
-        
-        # Přidej nové uzly a linky
-        self._global_diagram_data["nodes"].extend(scene_data["nodes"])
-        
-        # Pro linky odstraníme ty, které souvisí s uzly z této scény
-        scene_node_ids = {n["id"] for n in scene_data["nodes"]}
-        self._global_diagram_data["links"] = [
-            l for l in self._global_diagram_data.get("links", [])
-            if l.get("src") not in scene_node_ids and l.get("dst") not in scene_node_ids
-        ]
-        self._global_diagram_data["links"].extend(scene_data["links"])
-        
-        # Refresh hierarchického panelu
-        self.refresh_hierarchy_panel()
+        self._is_syncing = True
+        try:
+            if scene is None:
+                scene = self.scene
+            
+            from persistence.json_io import scene_to_dict
+            from opd.models import DiagramNode, DiagramLink
+            
+            # Převeď scénu na slovník
+            scene_data = scene_to_dict(scene)
+            
+            # Nastav parent_process_id pro uzly v této scéně
+            for node in scene_data["nodes"]:
+                if node.get("kind") in ("object", "process"):
+                    node["parent_process_id"] = parent_process_id
+            
+            # Odstraň staré uzly a linky z této scény
+            self._global_diagram_data["nodes"] = [
+                n for n in self._global_diagram_data["nodes"]
+                if n.get("parent_process_id") != parent_process_id
+            ]
+            
+            # Přidej nové uzly a linky
+            self._global_diagram_data["nodes"].extend(scene_data["nodes"])
+            
+            # Pro linky odstraníme ty, které souvisí s uzly z této scény
+            scene_node_ids = {n["id"] for n in scene_data["nodes"]}
+            self._global_diagram_data["links"] = [
+                l for l in self._global_diagram_data.get("links", [])
+                if l.get("src") not in scene_node_ids and l.get("dst") not in scene_node_ids
+            ]
+            self._global_diagram_data["links"].extend(scene_data["links"])
+            
+            # Refresh hierarchického panelu
+            self.refresh_hierarchy_panel()
+        except Exception as e:
+            print(f"Error in sync_scene_to_global_model: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self._is_syncing = False
     
     def sync_global_model_to_scene(self, scene, parent_process_id=None):
         """
@@ -177,36 +194,61 @@ class MainWindow(QMainWindow):
             scene: Cílová scéna
             parent_process_id: ID procesu, jehož podprocesy chceme načíst
         """
-        from persistence.json_io import dict_to_scene
-        
-        # Vyfiltruj uzly a linky pro tuto scénu
-        filtered_nodes = [
-            n for n in self._global_diagram_data["nodes"]
-            if n.get("parent_process_id") == parent_process_id
-        ]
-        
-        # Vytvoř množinu ID uzlů v této scéně
-        node_ids = {n["id"] for n in filtered_nodes}
-        
-        # Vyfiltruj linky, které spojují uzly v této scéně
-        filtered_links = [
-            l for l in self._global_diagram_data.get("links", [])
-            if l.get("src") in node_ids and l.get("dst") in node_ids
-        ]
-        
-        # Načti data do scény
-        filtered_data = {
-            "nodes": filtered_nodes,
-            "links": filtered_links,
-            "meta": self._global_diagram_data.get("meta", {})
-        }
-        
-        dict_to_scene(scene, filtered_data, self.allowed_link)
+        try:
+            print(f"[Sync] Loading data into scene for parent_process_id={parent_process_id}")
+            
+            from persistence.json_io import dict_to_scene
+            
+            # Vyfiltruj uzly a linky pro tuto scénu
+            filtered_nodes = [
+                n for n in self._global_diagram_data["nodes"]
+                if n.get("parent_process_id") == parent_process_id
+            ]
+            
+            print(f"[Sync] Found {len(filtered_nodes)} nodes")
+            
+            # Vytvoř množinu ID uzlů v této scéně
+            node_ids = {n["id"] for n in filtered_nodes}
+            
+            # Vyfiltruj linky, které spojují uzly v této scéně
+            filtered_links = [
+                l for l in self._global_diagram_data.get("links", [])
+                if l.get("src") in node_ids and l.get("dst") in node_ids
+            ]
+            
+            print(f"[Sync] Found {len(filtered_links)} links")
+            
+            # Načti data do scény
+            filtered_data = {
+                "nodes": filtered_nodes,
+                "links": filtered_links,
+                "meta": self._global_diagram_data.get("meta", {})
+            }
+            
+            dict_to_scene(scene, filtered_data, self.allowed_link)
+            print(f"[Sync] Scene loaded successfully")
+            
+        except Exception as e:
+            print(f"[ERROR] sync_global_model_to_scene failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     def refresh_hierarchy_panel(self):
         """Obnoví hierarchický panel."""
-        if hasattr(self, 'dock_hierarchy'):
-            self.dock_hierarchy.refresh_tree()
+        # Ochrana proti rekurzivním voláním
+        if self._is_refreshing_hierarchy:
+            return
+        
+        self._is_refreshing_hierarchy = True
+        try:
+            if hasattr(self, 'dock_hierarchy'):
+                self.dock_hierarchy.refresh_tree()
+        except Exception as e:
+            print(f"Error in refresh_hierarchy_panel: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self._is_refreshing_hierarchy = False
     
     def navigate_into_process_by_id(self, process_id: str, parent_process_id: Optional[str]):
         """
@@ -216,61 +258,75 @@ class MainWindow(QMainWindow):
             process_id: ID procesu
             parent_process_id: ID rodičovského procesu (None pro root)
         """
-        # Najdi proces v datovém modelu
-        process_node = None
-        for n in self._global_diagram_data["nodes"]:
-            if n["id"] == process_id and n["kind"] == "process":
-                process_node = n
-                break
+        print(f"[Navigate] Request to navigate to process_id={process_id}, parent={parent_process_id}")
         
-        if not process_node:
+        # Ochrana proti rekurzivním voláním
+        if self._is_navigating:
+            print("[Navigate] Already navigating, skipping...")
             return
         
-        # Najdi scénu, ve které je proces
-        parent_view = self._find_view_for_parent_process_id(parent_process_id)
-        if not parent_view:
-            # Pokud není view pro parent, zkus najít v root view
-            parent_view = self._find_root_view()
-        
-        if not parent_view:
-            return
-        
-        # Hledej existující in-zoom tab
-        existing_tab_idx = self._find_in_zoom_tab_for_process(process_id, parent_view)
-        if existing_tab_idx >= 0:
-            self.tabs.setCurrentIndex(existing_tab_idx)
-            return
-        
-        # Vytvoř nový in-zoom tab
-        breadcrumb_parts = []
-        
-        # Sestav breadcrumb
-        temp_parent_id = parent_process_id
-        while temp_parent_id:
+        self._is_navigating = True
+        try:
+            # Najdi proces v datovém modelu
+            process_node = None
             for n in self._global_diagram_data["nodes"]:
-                if n["id"] == temp_parent_id:
-                    breadcrumb_parts.insert(0, n["label"])
-                    temp_parent_id = n.get("parent_process_id")
+                if n["id"] == process_id and n["kind"] == "process":
+                    process_node = n
                     break
-            else:
-                break
-        
-        # Přidej název aktuálního procesu
-        breadcrumb_parts.append(process_node["label"])
-        tab_title = " → ".join(breadcrumb_parts)
-        tab_title = "🔍 " + tab_title
-        
-        # Vytvoř nový view
-        new_view = self._new_canvas(
-            title=tab_title,
-            parent_view=parent_view,
-            zoomed_process_id=process_id
-        )
-        
-        # Načti data do nové scény
-        self.sync_global_model_to_scene(new_view.scene(), process_id)
-        
-        self.statusBar().showMessage(f"In-zoom: {process_node['label']}", 2000)
+            
+            if not process_node:
+                print(f"[Navigate] Process not found: {process_id}")
+                return
+            
+            print(f"[Navigate] Found process: {process_node['label']}")
+            
+            # Najdi scénu, ve které je proces
+            parent_view = self._find_view_for_parent_process_id(parent_process_id)
+            if not parent_view:
+                # Pokud není view pro parent, zkus najít v root view
+                parent_view = self._find_root_view()
+            
+            if not parent_view:
+                print("[Navigate] Parent view not found!")
+                return
+            
+            print(f"[Navigate] Found parent view")
+            
+            # Hledej existující in-zoom tab
+            existing_tab_idx = self._find_in_zoom_tab_for_process(process_id, parent_view)
+            if existing_tab_idx >= 0:
+                print(f"[Navigate] Switching to existing tab {existing_tab_idx}")
+                self.tabs.setCurrentIndex(existing_tab_idx)
+                return
+            
+            print(f"[Navigate] Creating new in-zoom tab")
+            
+            # Vytvoř nový in-zoom tab
+            tab_title = f"🔍 {process_node['label']}"
+            
+            # Vytvoř nový view
+            new_view = self._new_canvas(
+                title=tab_title,
+                parent_view=parent_view,
+                zoomed_process_id=process_id
+            )
+            
+            if not new_view:
+                print("[Navigate] Failed to create new view!")
+                return
+            
+            # Načti data do nové scény
+            self.sync_global_model_to_scene(new_view.scene(), process_id)
+            
+            self.statusBar().showMessage(f"In-zoom: {process_node['label']}", 2000)
+            print(f"[Navigate] Navigation completed successfully")
+            
+        except Exception as e:
+            print(f"[ERROR] navigate_into_process_by_id failed: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self._is_navigating = False
     
     def _find_view_for_parent_process_id(self, parent_process_id):
         """Najde view pro daný parent_process_id."""
@@ -290,6 +346,50 @@ class MainWindow(QMainWindow):
             if not hasattr(view, 'parent_view') or view.parent_view is None:
                 return view
         return None
+    
+    def navigate_to_root_canvas(self):
+        """Naviguje na root canvas (top-level view)."""
+        root_view = self._find_root_view()
+        if root_view:
+            # Najdi index root view
+            root_idx = self._find_tab_index_for_view(root_view)
+            if root_idx >= 0:
+                self.tabs.setCurrentIndex(root_idx)
+                self.statusBar().showMessage("Root canvas", 2000)
+    
+    def _rename_process_by_id(self, process_id: str, new_label: str):
+        """
+        Přejmenuje proces v globálním modelu a ve všech view.
+        
+        Args:
+            process_id: ID procesu k přejmenování
+            new_label: Nový název
+        """
+        # Aktualizuj v globálním modelu
+        for node in self._global_diagram_data["nodes"]:
+            if node["id"] == process_id and node["kind"] == "process":
+                node["label"] = new_label
+                break
+        
+        # Najdi a aktualizuj proces ve všech otevřených view
+        for i in range(self.tabs.count()):
+            view = self.tabs.widget(i)
+            scene = view.scene()
+            
+            # Hledej proces v této scéně
+            for item in scene.items():
+                if hasattr(item, 'node_id') and item.node_id == process_id:
+                    from graphics.nodes import ProcessItem
+                    if isinstance(item, ProcessItem):
+                        item.set_label(new_label)
+                        break
+            
+            # Aktualizuj název tabu, pokud je to in-zoom view tohoto procesu
+            if hasattr(view, 'zoomed_process_id') and view.zoomed_process_id == process_id:
+                self.tabs.setTabText(i, f"🔍 {new_label}")
+        
+        # Refresh hierarchického panelu
+        self.refresh_hierarchy_panel()
     
     # ========== Tab management ==========
     
@@ -331,33 +431,8 @@ class MainWindow(QMainWindow):
             return
         
         # Tab neexistuje, vytvoř nový
-        # Sestavení názvu tabu s breadcrumb (např. "SD1 → Process")
-        breadcrumb_parts = []
-        
-        # Projdi hierarchii směrem nahoru a sestav breadcrumb
-        temp_view = current_view
-        while temp_view is not None:
-            if temp_view.zoomed_process_id:
-                # Najdi proces v parent view
-                if temp_view.parent_view:
-                    parent_scene = temp_view.parent_view.scene()
-                    for item in parent_scene.items():
-                        if hasattr(item, 'node_id') and item.node_id == temp_view.zoomed_process_id:
-                            breadcrumb_parts.insert(0, item.label)
-                            break
-            else:
-                # Root level - použij název tabu
-                tab_idx = self._find_tab_index_for_view(temp_view)
-                if tab_idx >= 0:
-                    breadcrumb_parts.insert(0, self.tabs.tabText(tab_idx))
-            temp_view = temp_view.parent_view
-        
-        # Přidej aktuální proces
-        breadcrumb_parts.append(process_item.label)
-        tab_title = " → ".join(breadcrumb_parts)
-        
-        # Přidej prefix pro indikaci in-zoom
-        tab_title = "🔍 " + tab_title
+        # Název tabu podle procesu
+        tab_title = f"🔍 {process_item.label}"
         
         # Vytvoř nový in-zoom canvas
         new_view = self._new_canvas(
@@ -416,27 +491,49 @@ class MainWindow(QMainWindow):
 
     def _activate_view(self, view):
         """Aktivuje daný view a připojí signály."""
-        # Synchronizuj starý view do globálního modelu před přepnutím
-        if hasattr(self, 'view') and hasattr(self, 'scene'):
-            old_parent_process_id = getattr(self.view, 'zoomed_process_id', None)
-            self.sync_scene_to_global_model(self.scene, old_parent_process_id)
-        
-        # Odpojí starý selectionChanged
         try:
-            self.scene.selectionChanged.disconnect(self.sync_selected_to_props)
-        except Exception:
-            pass
-        
-        self.view = view
-        self.scene = view.scene()
-        self.scene.selectionChanged.connect(self.sync_selected_to_props)
+            print(f"[Activate] Activating view with zoomed_process_id={getattr(view, 'zoomed_process_id', None)}")
+            
+            # Synchronizuj starý view do globálního modelu před přepnutím
+            # ale jen pokud není již synchronizace v běhu
+            if hasattr(self, 'view') and hasattr(self, 'scene') and not self._is_syncing:
+                old_parent_process_id = getattr(self.view, 'zoomed_process_id', None)
+                print(f"[Activate] Syncing old view with parent_process_id={old_parent_process_id}")
+                self.sync_scene_to_global_model(self.scene, old_parent_process_id)
+            
+            # Odpojí starý selectionChanged
+            try:
+                if hasattr(self, 'scene'):
+                    self.scene.selectionChanged.disconnect(self.sync_selected_to_props)
+            except Exception:
+                pass
+            
+            # Zkontroluj, že view a scene existují
+            if not view:
+                print("[ERROR] View is None!")
+                return
+            
+            scene = view.scene()
+            if not scene:
+                print("[ERROR] Scene is None!")
+                return
+            
+            self.view = view
+            self.scene = scene
+            self.scene.selectionChanged.connect(self.sync_selected_to_props)
 
-        # Vyčistí overlaye/stav linku
-        self.view.clear_overlays()
-        self.pending_link_src = None
-        
-        # Aktualizuj viditelnost out-zoom tlačítka
-        self.update_out_zoom_button_visibility()
+            # Vyčistí overlaye/stav linku
+            self.view.clear_overlays()
+            self.pending_link_src = None
+            
+            # Aktualizuj viditelnost out-zoom tlačítka
+            self.update_out_zoom_button_visibility()
+            
+            print(f"[Activate] View activated successfully")
+        except Exception as e:
+            print(f"[ERROR] _activate_view failed: {e}")
+            import traceback
+            traceback.print_exc()
 
     def _current_tab_title(self) -> str:
         """Vrátí text aktivní záložky nebo fallback."""
@@ -468,16 +565,28 @@ class MainWindow(QMainWindow):
             self._new_canvas("Canvas 1")
 
     def _rename_tab(self, idx: int):
-        """Přejmenuje tab."""
+        """Přejmenuje tab a odpovídající proces."""
         if idx < 0 or idx >= self.tabs.count():
             return
         
+        view = self.tabs.widget(idx)
         current = self.tabs.tabText(idx)
-        text, ok = QInputDialog.getText(self, "Rename OPD", "New name:", text=current)
+        
+        # Odstraň emoji prefix pro editaci
+        current_clean = current.replace("🔍 ", "").replace("🏠 ", "").strip()
+        
+        text, ok = QInputDialog.getText(self, "Rename OPD", "New name:", text=current_clean)
         if ok:
             new = text.strip()
             if new:
-                self.tabs.setTabText(idx, new)
+                # Pokud je to in-zoom view, přejmenuj proces
+                if hasattr(view, 'zoomed_process_id') and view.zoomed_process_id:
+                    self._rename_process_by_id(view.zoomed_process_id, new)
+                    # Aktualizuj název tabu
+                    self.tabs.setTabText(idx, f"🔍 {new}")
+                else:
+                    # Root canvas - pouze přejmenuj tab
+                    self.tabs.setTabText(idx, new)
     
     # ========== Mode & zoom ==========
     
