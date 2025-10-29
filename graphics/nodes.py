@@ -1,3 +1,10 @@
+"""Grafické prvky pro uzly diagramu (objekty, procesy, stavy).
+
+Implementuje tři typy uzlů:
+- ObjectItem: Obdélník se zaoblenými rohy (zelený obrys)
+- ProcessItem: Elipsa (modrý obrys)
+- StateItem: Malý obdélník uvnitř objektu (hnědý obrys)
+"""
 from __future__ import annotations
 from PySide6.QtCore import QRectF, Qt, QPointF
 from PySide6.QtGui import QBrush, QPen, QPainter, QColor, QFont
@@ -9,6 +16,15 @@ from graphics.resize import ResizableMixin
 
 
 class BaseNodeItem:
+    """
+    Společná funkc ionalita pro všechny typy uzlů.
+    
+    Zajišťuje:
+    - Inicializaci node_id a labelu
+    - Nastavení flagů (movable, selectable)
+    - Aktualizaci vazeb při změně pozice
+    - Zobrazení/skrytí resize handles
+    """
     def init_node(self, kind: str, label: str):
         self.kind = kind
         self.node_id = next_id(kind)
@@ -52,12 +68,22 @@ class BaseNodeItem:
 
 
 class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
+    """
+    Grafická reprezentace objektu v OPM diagramu.
+    
+    Vizuální znaky:
+    - Obdélník se zaoblenými rohy
+    - Zelený obrys (0, 128, 0)
+    - Bílá výplň
+    - Může obsahovat stavy (StateItem jako potomky)
+    - Podporuje změnu velikosti pomocí resize handles
+    """
     def __init__(self, rect: QRectF, label: str = "Object"):
         super().__init__(rect)
         self.init_node("object", label)
         self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(QColor(0, 128, 0), 2))  # tmavě zelený obrys
-        self._init_resize()  # přidá gripy
+        self.setPen(QPen(QColor(0, 128, 0), 2))  # Tmavě zelený obrys
+        self._init_resize()  # Přidá resize handles
 
     def boundingRect(self) -> QRectF:
         m = 8
@@ -138,12 +164,21 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
 
 
 class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
+    """
+    Grafická reprezentace procesu v OPM diagramu.
+    
+    Vizuální znaky:
+    - Elipsa (ovál)
+    - Tmavě modrý obrys (0, 0, 128)
+    - Bílá výplň
+    - Podporuje změnu velikosti pomocí resize handles
+    """
     def __init__(self, rect: QRectF, label: str = "Process"):
         super().__init__(rect)
         self.init_node("process", label)
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(Qt.black, 2))
-        self._init_resize()  # přidá gripy
+        self._init_resize()  # Přidá resize handles
 
     def itemChange(self, change, value):
         res = super().itemChange(change, value)
@@ -182,6 +217,17 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
 
 
 class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
+    """
+    Grafická reprezentace stavu objektu v OPM diagramu.
+    
+    Stavy jsou vždy potomky objektů (parent-child relationship).
+    
+    Vizuální znaky:
+    - Malý obdélník se zaoblenými rohy
+    - Hnědý obrys (150, 75, 0)
+    - Bílá výplň
+    - Podporuje změnu velikosti pomocí resize handles
+    """
     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
         super().__init__(rect, parent=parent_obj)
         self.init_node("state", label)
@@ -194,12 +240,12 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             QGraphicsItem.ItemSendsGeometryChanges
         )
 
-        # registruj se k rodiči - pro redu command at funguje presun s rodicem
+        # Registruje se k rodiči (potřeba pro redo commands a přesun s rodicem)
         if not hasattr(parent_obj, "_states"):
             parent_obj._states = []
         parent_obj._states.append(self)
 
-        # voláme bez argumentů, jako u ObjectItem a ProcessItem
+        # Inicializace resize handles
         self._init_resize()
 
     def remove_from_parent(self):

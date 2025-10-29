@@ -1,11 +1,26 @@
+"""Generování vlastních ikon pro toolbar a UI.
+
+Vytváří vektorové ikony přímo v kódu pomocí QPainter pro:
+- Tvary prvků (object, process, state, link)
+- Nástroje (cursor, delete, zoom in/out, reset zoom)
+"""
 from PySide6.QtCore import Qt, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QPainterPath
 import math
 
 
-# Továrna na ikonky
 def icon_shape(kind: str, size: int = 22) -> QIcon:
-    """Vykreslí jednoduché vektorové ikonky (object/process/state/link/zoom+/zoom-)."""
+    """
+    Vytvoří vektorovou ikonu pro daný typ prvku/nástroje.
+    
+    Args:
+        kind: Typ ikony ("object", "process", "state", "link", "cursor", "delete", 
+              "zoom_in", "zoom_out", "reset_zoom")
+        size: Velikost ikony v pixelech (výchozí 22)
+    
+    Returns:
+        QIcon s vykreslenou ikonou
+    """
     pm = QPixmap(size, size)
     pm.fill(Qt.transparent)
     p = QPainter(pm)

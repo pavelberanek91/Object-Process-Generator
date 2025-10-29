@@ -1,3 +1,11 @@
+"""Grafická reprezentace vazeb (linků) mezi uzly v OPM diagramu.
+
+Implementuje:
+- LinkItem: Čára propojující dva uzly s příslušnými markery (šipky, kruhy, atd.)
+- LabelHandle: Přesouvatelný text pro typ vazby a label
+- Automatické výpočty kotevních bodů na obdélnících/elipsách
+- Různé styly vazeb (procedurální/strukturální) s příslušnými markery
+"""
 from __future__ import annotations
 import math
 from typing import Tuple
@@ -8,7 +16,13 @@ from PySide6.QtWidgets import (
     QGraphicsRectItem, QStyle
 )
 
+
 class LabelHandle(QGraphicsSimpleTextItem):
+    """
+    Přesouvatelný textový popisek vazby (typ vazby nebo vlastní label).
+    
+    Umožňuje uživateli přemístit popisek pro lepší čitelnost diagramu.
+    """
     def __init__(self, link: "LinkItem", kind: str, text: str):
         super().__init__(text, link)
         self.link = link

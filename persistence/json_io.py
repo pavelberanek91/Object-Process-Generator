@@ -1,3 +1,8 @@
+"""Modul pro import/export diagramů do/z JSON formátu (persistence).
+
+Zajišťuje ukládání a načítání kompletního stavu diagramu včetně pozic, 
+velikostí uzlů, typů vazeb a všech metadat.
+"""
 import json
 import os
 import re
@@ -9,23 +14,41 @@ from PySide6.QtWidgets import QFileDialog, QMessageBox, QGraphicsItem
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
 from graphics.link import LinkItem
 from constants import NODE_W, NODE_H, STATE_W, STATE_H, LINK_TYPES, PROCEDURAL_TYPES, STRUCTURAL_TYPES, GRID_SIZE
-from utils.ids import next_id  # pokud máš generátor ID někde bokem
+from utils.ids import next_id
 from opd.models import DiagramNode, DiagramLink
 
 
 def safe_base_filename(title: str | None = None) -> str:
-    """Z názvu tabu udělá bezpečný základ pro soubor (bez přípon)."""
+    """
+    Vytvoří bezpečný název souboru z názvu tabu (odstraní zakázané znaky).
+    
+    Args:
+        title: Název tabu/diagramu
+    
+    Returns:
+        Bezpečný název souboru (bez přípony)
+    """
     base = (title or "OPD").strip()
-    # zakázané znaky a přebytečné mezery nahradíme podtržítkem
+    # Nahradí zakázané znaky podtržítkem
     base = re.sub(r'[\\/*?:"<>|]+', "_", base)
-    base = re.sub(r"\s+", "_", base)
+    base = re.sub(r"\s+", "_", base)  # Více mezer → jedno podtržítko
     return base or "Canvas"
     
 
 def scene_to_dict(scene) -> Dict[str, Any]:
-    nodes: List[DiagramNode] = [] 
-    links: List[DiagramLink] = []
+    """
+    Převede scénu s diagramem na slovník (pro JSON export).
     
+    Args:
+        scene: QGraphicsScene obsahující diagram
+    
+    Returns:
+        Slovník s klíči "nodes", "links" a "meta"
+    """
+    nodes: List[DiagramNode] = []  # Seznam uzlů pro export
+    links: List[DiagramLink] = []  # Seznam vazeb pro export
+    
+    # === Sběr uzlů (objekty, procesy, stavy) ===
     for it in scene.items():
         if isinstance(it, (ObjectItem, ProcessItem)):
             r_scene = it.mapRectToScene(it.rect())
@@ -79,9 +102,16 @@ def scene_to_dict(scene) -> Dict[str, Any]:
     
 
 def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
-    """Načte dict do scény."""
-    scene.clear()
-    id_to_item: Dict[str, QGraphicsItem] = {}
+    """
+    Načte slovník (z JSON) do scény.
+    
+    Args:
+        scene: Cílová QGraphicsScene
+        data: Slovník s klíči "nodes" a "links"
+        allowed_link: Callback funkce pro validaci vazeb
+    """
+    scene.clear()  # Vyčistí scénu před načtením
+    id_to_item: Dict[str, QGraphicsItem] = {}  # Mapování ID → item pro propojení vazeb
     
     for n in data.get("nodes", []):
         kind = n["kind"]
@@ -134,27 +164,48 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
         
         
 def save_scene_as_json(scene, title: str | None = None):
+    """
+    Uloží scénu do JSON souboru (s dialogem pro výběr cesty).
+    
+    Args:
+        scene: Scéna k uložení
+        title: Název tabu (použije se jako výchozí název souboru)
+    """
     base = safe_base_filename(title)
     path, _ = QFileDialog.getSaveFileName(None, "Save OPD (JSON)", f"{base}.json", "JSON (*.json)")
     if not path: 
         return
+    # Uložení do souboru s UTF-8 encoding a odsazením pro čitelnost
     with open(path, "w", encoding="utf-8") as f: 
         json.dump(scene_to_dict(scene), f, ensure_ascii=False, indent=2)
 
 
 def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab: bool = False):
+    """
+    Načte scénu z JSON souboru (s dialogem pro výběr souboru).
+    
+    Args:
+        scene: Aktuální scéna (použije se pokud new_tab=False)
+        allowed_link: Callback pro validaci vazeb
+        new_canvas_callback: Funkce pro vytvoření nového tabu
+        new_tab: Pokud True, načte do nového tabu; jinak do aktuální scény
+    """
     caption = "Import OPD (new tab)" if new_tab else "Import OPD (current tab)"
     path, _ = QFileDialog.getOpenFileName(None, caption, "", "JSON (*.json)")
     if not path:
         return
     
+    # Načtení JSON souboru
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    # Určení cílové scény
     target_scene = scene
     if new_tab and new_canvas_callback:
+        # Vytvoří nový tab s názvem podle souboru
         base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
         view = new_canvas_callback(base)
         target_scene = view.scene()
 
+    # Načtení dat do scény
     dict_to_scene(target_scene, data, allowed_link)

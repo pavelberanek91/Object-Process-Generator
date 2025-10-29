@@ -1,3 +1,11 @@
+"""Vlastní QGraphicsView pro OPM Editor.
+
+Rozšiřuje QGraphicsView o:
+- Režimy editace (select, add_object, add_process, add_state, add_link)
+- Ghost preview při přidávání prvků
+- Temporary link při vytváření vazeb
+- Zoom pomocí Ctrl+kolečko myši
+"""
 from __future__ import annotations
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QPainterPath, QPen
@@ -5,7 +13,14 @@ from PySide6.QtWidgets import QGraphicsView, QGraphicsItem, QGraphicsPathItem
 from constants import Mode, NODE_W, NODE_H, STATE_W, STATE_H
 from graphics.nodes import ObjectItem
 
+
 class EditorView(QGraphicsView):
+    """
+    Hlavní view pro editaci OPM diagramů.
+    
+    Implementuje různé režimy editace a zobrazuje náhledy (ghost items)
+    při přidávání nových prvků.
+    """
     def __init__(self, scene, app):
         super().__init__(scene)
         self.app = app

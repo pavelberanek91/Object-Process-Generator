@@ -1,17 +1,29 @@
+"""Systém pro změnu velikosti uzlů pomocí resize handles (táhel).
+
+Implementuje:
+- ResizeHandle: Malé čtverce na okrajích uzlu pro změnu velikosti
+- ResizableMixin: Mixin přidávající 8 resize handles uzlům
+- Snap na mřížku při změně velikosti
+- Minimální rozměry uzlů
+"""
 from typing import Optional
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QCursor, QPen, QBrush
 from PySide6.QtWidgets import QGraphicsRectItem, QGraphicsItem
 from constants import HANDLE_SIZE, GRID_SIZE, MIN_NODE_W, MIN_NODE_H
 
+
 def _snapf(x: float) -> float:
+    """Zarovná souřadnici na nejbližší násobek GRID_SIZE."""
     return round(x / GRID_SIZE) * GRID_SIZE
 
+
 class ResizeHandle(QGraphicsRectItem):
-    """Malé táhlo pro změnu velikosti rodičovského uzlu.
+    """
+    Malé táhlo pro změnu velikosti rodičovského uzlu.
 
     Táhlo je potomkem uzlu (Object/Process), ignoruje transformace (stálá velikost na obrazovce)
-    a při táhnutí volá metodu `request_resize(role, scene_pos)` na parentu.
+    a při táhnutí volá metody `begin_resize`, `request_resize` a `end_resize` na parentu.
     """
 
     def __init__(self, parent: QGraphicsItem, role: str):

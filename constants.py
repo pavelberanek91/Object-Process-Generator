@@ -1,27 +1,33 @@
+"""Globální konstanty pro OPM Editor."""
 from __future__ import annotations
 
-GRID_SIZE = 25
-NODE_W, NODE_H = 140, 70
-STATE_W, STATE_H = 100, 28
+# === Rozměry a mřížka ===
+GRID_SIZE = 25  # Velikost čtverce mřížky v pixelech (pro snap)
+NODE_W, NODE_H = 140, 70  # Výchozí šířka a výška objektů a procesů
+STATE_W, STATE_H = 100, 28  # Výchozí šířka a výška stavů
 
-# konstanty pro resize prvků
-HANDLE_SIZE = 10          # velikost táhla v px (ignoruje zoom)
-MIN_NODE_W  = 80          # minimální šířka uzlu při resize
-MIN_NODE_H  = 50          # minimální výška uzlu při resize
+# === Konstanty pro resize prvků ===
+HANDLE_SIZE = 10  # Velikost táhla pro změnu velikosti v px (ignoruje zoom)
+MIN_NODE_W  = 80  # Minimální šířka uzlu při změně velikosti
+MIN_NODE_H  = 50  # Minimální výška uzlu při změně velikosti
 
+# === Typy vazeb (linků) v OPM ===
 LINK_TYPES = [
-    # procedural
+    # Procedurální vazby (vztahy mezi procesy a objekty)
     "input", "consumption", "output", "result", "effect", "agent", "instrument",
-    # structural
+    # Strukturální vazby (vztahy mezi objekty navzájem)
     "aggregation", "exhibition", "generalization", "instantiation",
 ]
 
+# Rozdělení typů vazeb pro snadnější validaci
 PROCEDURAL_TYPES = {"input", "consumption", "output", "result", "effect", "agent", "instrument"}
 STRUCTURAL_TYPES  = {"aggregation", "exhibition", "generalization", "instantiation"}
 
+# === Režimy editoru ===
 class Mode:
-    SELECT = "select"
-    ADD_OBJECT = "add_object"
-    ADD_PROCESS = "add_process"
-    ADD_STATE = "add_state"
-    ADD_LINK = "add_link"
+    """Výčet možných režimů interakce v editoru."""
+    SELECT = "select"  # Výběr a přesouvání prvků
+    ADD_OBJECT = "add_object"  # Přidávání objektů
+    ADD_PROCESS = "add_process"  # Přidávání procesů
+    ADD_STATE = "add_state"  # Přidávání stavů
+    ADD_LINK = "add_link"  # Přidávání vazeb (linků)

@@ -1,17 +1,25 @@
-# undo/commands.py
+"""Příkazy pro undo/redo systém editoru.
+
+Každá editační operace (přidání, smazání, přesun, změna velikosti, ...)
+je implementována jako QUndoCommand, který umožňuje vrácení zpět (undo)
+a opakování (redo) akce.
+"""
 from __future__ import annotations
 from typing import List, Optional
 from PySide6.QtWidgets import QGraphicsScene
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QUndoCommand
 
-# Typy z tvého projektu
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
 from graphics.link import LinkItem
 
+
 class AddNodeCommand(QUndoCommand):
     """
-    Univerzální příkaz pro přidání ObjectItem nebo ProcessItem do scény.
+    Příkaz pro přidání uzlu (objektu nebo procesu) do scény.
+    
+    Redo: Přidá uzel do scény
+    Undo: Odstraní uzel ze scény
     """
     def __init__(self, scene, item, text="Add Node"):
         super().__init__(text)
@@ -19,74 +27,96 @@ class AddNodeCommand(QUndoCommand):
         self.item = item
 
     def redo(self):
+        """Přidá uzel do scény (pokud tam ještě není)."""
         if not self.item.scene():
             self.scene.addItem(self.item)
-        #self.item.setSelected(True) - smazat, vse zustalo pri pridani oznacene
 
     def undo(self):
+        """Odstraní uzel ze scény."""
         if self.item.scene():
             self.scene.removeItem(self.item)
 
 
 class AddStateCommand(QUndoCommand):
+    """
+    Příkaz pro přidání stavu do objektu.
+    
+    Stavy jsou potomky objektů (parent-child relationship v Qt Graphics).
+    """
     def __init__(self, scene, parent_obj, rect, label="State"):
         super().__init__("Add State")
         self.scene = scene
-        self.parent_obj = parent_obj
+        self.parent_obj = parent_obj  # Rodičovský ObjectItem
         self.rect = rect
         self.label = label
         self.item = None  # type: Optional[StateItem]
 
     def redo(self):
+        """Přidá stav jako potomka objektu."""
         if self.item is None:
-            # vytvoř jako child – TÍM JE AUTOMATICKY VE SCÉNĚ rodiče
+            # První volání: vytvoří nový stav jako child objektu
+            # (tím se automaticky přidá do scény)
             self.item = StateItem(self.parent_obj, self.rect, self.label)
         else:
-            # po undo – stačí znovu přivázat k rodiči (do scény už se nevolá addItem)
+            # Po undo: znovu přiváže k rodiči
             self.item.setParentItem(self.parent_obj)
-        #self.item.setSelected(True) - smazat, vse zustavalo diky tomu oznacene
 
     def undo(self):
+        """Odstraní stav ze scény."""
         if self.item:
-            # nejdřív odpoj od rodiče (aby nebyl child)
+            # Nejdřív odpojí od rodiče (aby byl top-level item)
             self.item.setParentItem(None)
-            # a pak teprve odstranění ze scény (teď je top-level)
+            # Pak teprve odstraní ze scény
             if self.item.scene():
                 self.scene.removeItem(self.item)
 
 
 
-# ---------- Delete selection ----------
+# === Mazání prvků ===
+
 class DeleteItemsCommand(QUndoCommand):
+    """
+    Příkaz pro smazání vybraných prvků.
+    
+    Při smazání uzlu musí smazat i všechny napojené vazby.
+    Při smazání objektu musí smazat i všechny jeho stavy a jejich vazby.
+    """
     def __init__(self, scene: QGraphicsScene, items: List):
         super().__init__("Delete selection")
         self.scene = scene
-        self.items = items[:]
-        self.links = []
+        self.items = items[:]  # Kopie seznamu mazaných prvků
+        self.links = []  # Vazby, které je potřeba smazat spolu s uzly
+        
+        # Sesbírá všechny vazby napojené na mazané uzly
         for it in self.items:
             if hasattr(it, "_links"):
                 self.links.extend(list(it._links or []))
+            # Pro stavy si uloží rodiče (pro undo)
             if isinstance(it, StateItem):
                 it._saved_parent = it.parentItem()
+        # Přidá vazby, které jsou přímo vybrané
         self.links.extend([it for it in self.items if isinstance(it, LinkItem)])
+        # Deduplikace vazeb (podle id)
         self.links = list({id(x): x for x in self.links}.values())
 
     def redo(self):
-        # nejdřív linky, pak uzly
+        """Smaže vybrané prvky a všechny napojené vazby."""
+        # Nejdřív smaže vazby
         for ln in self.links:
-            if ln.scene():  # pořád ve scéně?
-                ln.remove_refs()
+            if ln.scene():
+                ln.remove_refs()  # Odstraní zpětné odkazy z uzlů
                 self.scene.removeItem(ln)
 
+        # Pak smaže uzly
         for it in self.items:
             if it.scene():
-                # odpoj linky uzlu
+                # Odstraní všechny vazby uzlu
                 for ln in list(getattr(it, "_links", []) or []):
                     ln.remove_refs()
                     if ln.scene():
                         self.scene.removeItem(ln)
 
-                # odpoj linky stavů (children)
+                # Pro objekty: odstraní i vazby jejich stavů
                 for ch in it.childItems():
                     if isinstance(ch, StateItem):
                         for ln in list(getattr(ch, "_links", []) or []):
@@ -97,26 +127,33 @@ class DeleteItemsCommand(QUndoCommand):
                 self.scene.removeItem(it)
 
     def undo(self):
-        # nejdřív vrať uzly
+        """Vrátí smazané prvky zpět do scény."""
+        # Nejdřív vrátí uzly
         for it in self.items:
             if not it.scene():
+                # Pro stavy obnoví rodiče
                 if isinstance(it, StateItem) and getattr(it, "_saved_parent", None):
                     it.setParentItem(it._saved_parent)
                 self.scene.addItem(it)
 
-        # pak linky a přepočti jejich path
+        # Pak vrátí vazby a přepočítá jejich geometrii
         for ln in self.links:
             if not ln.scene():
                 self.scene.addItem(ln)
-                ln.update_path()
+                ln.update_path()  # Přepočítá cestu vazby
 
 
 class ClearAllCommand(QUndoCommand):
+    """
+    Příkaz pro smazání všech prvků ze scény ("Clear All").
+    
+    Podobné DeleteItemsCommand, ale operuje na všech prvcích.
+    """
     def __init__(self, scene: QGraphicsScene):
         super().__init__("Clear all")
         self.scene = scene
-        self.items = list(scene.items())
-        self.links = []
+        self.items = list(scene.items())  # Uloží všechny prvky pro undo
+        self.links = []  # Seznam vazeb
 
         for it in self.items:
             # seber linky přímo z uzlu
@@ -165,19 +202,25 @@ class ClearAllCommand(QUndoCommand):
 
 
 
-# ---------- Set label ----------
+# === Změna vlastností prvků ===
+
 class SetLabelCommand(QUndoCommand):
+    """
+    Příkaz pro změnu labelu uzlu nebo vazby.
+    """
     def __init__(self, item, new_label: str):
         super().__init__("Rename")
         self.item = item
-        self.old = getattr(item, "label", "")
-        self.new = new_label
+        self.old = getattr(item, "label", "")  # Starý label
+        self.new = new_label  # Nový label
 
     def redo(self):
+        """Nastaví nový label."""
         if hasattr(self.item, "set_label"):
             self.item.set_label(self.new)
 
     def undo(self):
+        """Obnoví starý label."""
         if hasattr(self.item, "set_label"):
             self.item.set_label(self.old)
 
