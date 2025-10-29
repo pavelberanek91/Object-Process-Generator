@@ -1,6 +1,6 @@
 """Toolbar a související funkce pro OPM Editor."""
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QActionGroup, QKeySequence
+from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QMouseEvent
 from PySide6.QtWidgets import (
     QApplication,
     QToolBar,
@@ -11,10 +11,35 @@ from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
     QStyle,
+    QSlider,
 )
 from constants import Mode, LINK_TYPES
 from ui.icons import icon_shape, icon_std
 from persistence.json_io import save_scene_as_json, load_scene_from_json
+
+
+class ZoomSlider(QSlider):
+    """Slider pro zoom s podporou dvojkliku pro reset na 100%."""
+    
+    def __init__(self, orientation, parent=None):
+        super().__init__(orientation, parent)
+        self._double_click_pending = False
+    
+    def mousePressEvent(self, event: QMouseEvent):
+        """Zachytí stisk myši - pokud jde o dvojklik, ignoruj změnu hodnoty."""
+        if self._double_click_pending:
+            # Ignoruj tento press event, protože jde o druhou část dvojkliku
+            self._double_click_pending = False
+            event.accept()
+            return
+        # Normální zpracování
+        super().mousePressEvent(event)
+    
+    def mouseDoubleClickEvent(self, event: QMouseEvent):
+        """Při dvojkliku nastaví hodnotu na 100%."""
+        self._double_click_pending = True
+        self.setValue(100)
+        event.accept()  # Zabráníme dalšímu zpracování události
 
 
 class ToolbarManager:
@@ -70,19 +95,29 @@ class ToolbarManager:
             lambda: self.main_window.delete_selected()
         )
         tb.addSeparator()
-        self._add_icon_btn(
-            tb,
-            icon_shape("zoom_in"),
-            "Zoom In (Ctrl + Wheel)",
-            lambda: self.main_window.zoom_in()
-        )
-        tb.addSeparator()
-        self._add_icon_btn(
-            tb,
-            icon_shape("zoom_out"),
-            "Zoom Out (Ctrl + Wheel)",
-            lambda: self.main_window.zoom_out()
-        )
+        
+        # Zoom slider
+        zoom_label = QLabel("Zoom:")
+        tb.addWidget(zoom_label)
+        
+        zoom_slider = ZoomSlider(Qt.Horizontal)
+        zoom_slider.setMinimum(20)  # 20%
+        zoom_slider.setMaximum(500)  # 500%
+        zoom_slider.setValue(100)  # 100%
+        zoom_slider.setTickPosition(QSlider.TicksBelow)
+        zoom_slider.setTickInterval(50)
+        zoom_slider.setFixedWidth(150)
+        zoom_slider.setToolTip("Zoom (Ctrl + Wheel, dvojklik = reset na 100%)")
+        zoom_slider.valueChanged.connect(lambda value: self.main_window.set_zoom(value / 100.0))
+        tb.addWidget(zoom_slider)
+        
+        # Label s aktuální hodnotou zoomu
+        self.main_window.zoom_value_label = QLabel("100%")
+        self.main_window.zoom_value_label.setFixedWidth(45)
+        tb.addWidget(self.main_window.zoom_value_label)
+        
+        # Uložit slider pro pozdější aktualizaci
+        self.main_window.zoom_slider = zoom_slider
     
     def _create_edit_toolbar(self):
         """Vytvoří edit toolbar s undo/redo."""

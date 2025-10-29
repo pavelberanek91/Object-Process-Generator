@@ -659,20 +659,47 @@ class MainWindow(QMainWindow):
             self.pending_link_src = None
             self.view.clear_temp_link()
 
+    def set_zoom(self, scale: float):
+        """Nastaví konkrétní úroveň zoomu."""
+        # Omezení rozsahu
+        scale = max(0.2, min(scale, 5.0))
+        
+        # Vypočítej faktor změny
+        if self._scale > 0:
+            factor = scale / self._scale
+        else:
+            factor = scale
+        
+        # Aplikuj změnu
+        self._scale = scale
+        self.view.resetTransform()
+        self.view.scale(scale, scale)
+        
+        # Aktualizuj UI
+        self._update_zoom_ui()
+    
+    def _update_zoom_ui(self):
+        """Aktualizuje UI prvky pro zoom (slider a label)."""
+        if hasattr(self, 'zoom_slider') and hasattr(self, 'zoom_value_label'):
+            # Dočasně odpojíme signal, aby se zabránilo rekurzi
+            self.zoom_slider.blockSignals(True)
+            self.zoom_slider.setValue(int(self._scale * 100))
+            self.zoom_slider.blockSignals(False)
+            self.zoom_value_label.setText(f"{int(self._scale * 100)}%")
+
     def zoom_in(self):
         """Přiblíží view."""
-        self._scale = min(self._scale * 1.2, 5.0)
-        self.view.scale(1.2, 1.2)
+        new_scale = min(self._scale * 1.2, 5.0)
+        self.set_zoom(new_scale)
 
     def zoom_out(self):
         """Oddálí view."""
-        self._scale = max(self._scale / 1.2, 0.2)
-        self.view.scale(1/1.2, 1/1.2)
+        new_scale = max(self._scale / 1.2, 0.2)
+        self.set_zoom(new_scale)
 
     def zoom_reset(self):
         """Resetuje zoom."""
-        self._scale = 1.0
-        self.view.resetTransform()
+        self.set_zoom(1.0)
     
     # ========== Node operations ==========
     
