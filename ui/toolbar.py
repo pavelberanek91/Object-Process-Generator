@@ -65,16 +65,9 @@ class ToolbarManager:
         tb.addSeparator()
         self._add_icon_btn(
             tb, 
-            icon_shape("delete"), 
+            icon_std(self.main_window, QStyle.SP_TrashIcon), 
             "Delete (Del)", 
             lambda: self.main_window.delete_selected()
-        )
-        tb.addSeparator()
-        self._add_icon_btn(
-            tb,
-            icon_std(self.main_window, QStyle.SP_DialogDiscardButton),
-            "Clear All",
-            lambda: self.main_window.clear_all()
         )
         tb.addSeparator()
         self._add_icon_btn(
@@ -89,13 +82,6 @@ class ToolbarManager:
             icon_shape("zoom_out"),
             "Zoom Out (Ctrl + Wheel)",
             lambda: self.main_window.zoom_out()
-        )
-        tb.addSeparator()
-        self._add_icon_btn(
-            tb,
-            icon_shape("reset_zoom"),
-            "Reset Zoom",
-            lambda: self.main_window.zoom_reset()
         )
     
     def _create_edit_toolbar(self):
