@@ -110,8 +110,9 @@ class LinkItem(QGraphicsPathItem):
         self._type_offset  = QPointF(6, -4)
         self._label_offset = QPointF(6, 10)
 
-        self.ti_type  = LabelHandle(self, "type", self.link_type)
-        self.ti_label = LabelHandle(self, "label", f'"{self.label}"') if self.label else None
+        # Typ vazby se nezobrazuje, pouze vlastní label
+        self.ti_type  = None
+        self.ti_label = LabelHandle(self, "label", self.label) if self.label else None
         
         self.ti_card_src = QGraphicsSimpleTextItem("", self)
         self.ti_card_src.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
@@ -336,19 +337,23 @@ class LinkItem(QGraphicsPathItem):
                 self.ti_type.setText(self.link_type)
             self.update()
 
-    def set_label_text(self, text: str):
-        if text == self.label: return
+    def set_label(self, text: str):
+        """Nastaví label vazby (kompatibilní s SetLabelCommand)."""
         self.label = text
         if text:
             if getattr(self, "ti_label", None) is None:
-                self.ti_label = LabelHandle(self, "label", f'"{text}"')
+                # Vytvořit nový label handle
+                self.ti_label = LabelHandle(self, "label", text)
+                self._position_text()
             else:
-                self.ti_label.setText(f'"{text}"')
+                # Aktualizovat existující
+                self.ti_label.setText(text)
         else:
+            # Smazat label pokud je prázdný
             if getattr(self, "ti_label", None) is not None:
                 self.scene().removeItem(self.ti_label)
                 self.ti_label = None
-        self._position_text(); self.update()
+        self.update()
         
     def set_card_src(self, text: str):
         self.card_src = text
