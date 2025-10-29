@@ -43,6 +43,7 @@ class BaseNodeItem:
             # zobraz/skrýj táhla podle výběru – jen pokud mixin existuje
             if hasattr(self, "_set_handles_visible"):
                 self._set_handles_visible(bool(self.isSelected()))
+            print(f"[Node] {self.kind} '{self.label}' selection changed: {bool(self.isSelected())}")
             self.update()
 
         if change in (

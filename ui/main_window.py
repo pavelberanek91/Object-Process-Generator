@@ -102,6 +102,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock_props)
         
         # Připojí změnu výběru na panel
+        print("[Init] Connecting properties panel to scene.selectionChanged")
         self.scene.selectionChanged.connect(self.update_properties_panel)
         self.update_properties_panel()
     
@@ -297,6 +298,8 @@ class MainWindow(QMainWindow):
             if existing_tab_idx >= 0:
                 print(f"[Navigate] Switching to existing tab {existing_tab_idx}")
                 self.tabs.setCurrentIndex(existing_tab_idx)
+                # Aktualizuj properties panel
+                self.update_properties_panel()
                 return
             
             print(f"[Navigate] Creating new in-zoom tab")
@@ -317,6 +320,9 @@ class MainWindow(QMainWindow):
             
             # Načti data do nové scény
             self.sync_global_model_to_scene(new_view.scene(), process_id)
+            
+            # Aktualizuj properties panel pro nový view
+            self.update_properties_panel()
             
             self.statusBar().showMessage(f"In-zoom: {process_node['label']}", 2000)
             print(f"[Navigate] Navigation completed successfully")
@@ -355,6 +361,8 @@ class MainWindow(QMainWindow):
             root_idx = self._find_tab_index_for_view(root_view)
             if root_idx >= 0:
                 self.tabs.setCurrentIndex(root_idx)
+                # Aktualizuj properties panel
+                self.update_properties_panel()
                 self.statusBar().showMessage("Root canvas", 2000)
     
     def _rename_process_by_id(self, process_id: str, new_label: str):
@@ -501,11 +509,14 @@ class MainWindow(QMainWindow):
                 print(f"[Activate] Syncing old view with parent_process_id={old_parent_process_id}")
                 self.sync_scene_to_global_model(self.scene, old_parent_process_id)
             
-            # Odpojí starý selectionChanged
+            # Odpojí staré signály
             try:
                 if hasattr(self, 'scene'):
+                    print(f"[Activate] Disconnecting old signals")
                     self.scene.selectionChanged.disconnect(self.sync_selected_to_props)
-            except Exception:
+                    self.scene.selectionChanged.disconnect(self.update_properties_panel)
+            except Exception as e:
+                print(f"[Activate] Could not disconnect old signals: {e}")
                 pass
             
             # Zkontroluj, že view a scene existují
@@ -520,7 +531,11 @@ class MainWindow(QMainWindow):
             
             self.view = view
             self.scene = scene
+            
+            print(f"[Activate] Connecting selectionChanged signals")
+            # Připoj signály
             self.scene.selectionChanged.connect(self.sync_selected_to_props)
+            self.scene.selectionChanged.connect(self.update_properties_panel)
 
             # Vyčistí overlaye/stav linku
             self.view.clear_overlays()
@@ -528,6 +543,9 @@ class MainWindow(QMainWindow):
             
             # Aktualizuj viditelnost out-zoom tlačítka
             self.update_out_zoom_button_visibility()
+            
+            # Aktualizuj properties panel
+            self.update_properties_panel()
             
             print(f"[Activate] View activated successfully")
         except Exception as e:
@@ -719,13 +737,19 @@ class MainWindow(QMainWindow):
     
     def update_properties_panel(self):
         """Aktualizuje properties panel."""
+        print("[MainWindow] update_properties_panel called")
         if hasattr(self, 'dock_props'):
             self.dock_props.update_for_selection()
+        else:
+            print("[MainWindow] No dock_props!")
     
     def sync_selected_to_props(self):
         """Synchronizuje výběr do properties panelu."""
+        print("[MainWindow] sync_selected_to_props called")
         if hasattr(self, 'dock_props'):
             self.dock_props.sync_selection_to_props()
+        else:
+            print("[MainWindow] No dock_props in sync_selected_to_props!")
     
     # ========== Dialogy ==========
     

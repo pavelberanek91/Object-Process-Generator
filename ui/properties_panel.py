@@ -81,6 +81,8 @@ class PropertiesPanel(QDockWidget):
         """Aktualizuje panel na základě aktuálního výběru."""
         it = self._get_selected_item()
         
+        print(f"[Properties] Updating for selection: {type(it).__name__ if it else 'None'}")
+        
         # defaultně schováme vše, co nemá být vidět
         self.lbl_label.hide()
         self.ed_label.hide()
@@ -97,6 +99,7 @@ class PropertiesPanel(QDockWidget):
 
         if isinstance(it, (ObjectItem, ProcessItem)):
             # Objekt / proces → má label + essence + affiliation
+            print(f"[Properties] Showing properties for {it.label}")
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
@@ -111,12 +114,14 @@ class PropertiesPanel(QDockWidget):
             self.cmb_affiliation.setCurrentText(it.affiliation)
         elif isinstance(it, StateItem):
             # Stav → má jen label
+            print(f"[Properties] Showing properties for state {it.label}")
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
             self.ed_label.setText(it.label)
         elif isinstance(it, LinkItem):
             # Link → má label + typ + kardinalitu
+            print(f"[Properties] Showing properties for link")
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
@@ -134,6 +139,8 @@ class PropertiesPanel(QDockWidget):
                 self.ed_card_dst.show()
                 self.ed_card_src.setText(it.card_src)
                 self.ed_card_dst.setText(it.card_dst)
+        else:
+            print(f"[Properties] No item selected or unsupported type")
     
     def sync_selection_to_props(self):
         """Synchronizuje výběr do properties panelu."""
@@ -163,8 +170,13 @@ class PropertiesPanel(QDockWidget):
     def _get_selected_item(self):
         """Vrátí první vybraný prvek nebo None."""
         if not self.main_window:
+            print("[Properties] No main_window!")
+            return None
+        if not hasattr(self.main_window, 'scene'):
+            print("[Properties] main_window has no scene!")
             return None
         sel = self.main_window.scene.selectedItems()
+        print(f"[Properties] Selected items count: {len(sel)}")
         return sel[0] if sel else None
     
     def _on_label_changed(self):
