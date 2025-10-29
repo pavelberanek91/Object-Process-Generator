@@ -38,6 +38,17 @@ class ToolbarManager:
         self._add_file_menu(tb)
         
         tb.addSeparator()
+        
+        # Out-zoom button (viditelné pouze v in-zoom módu)
+        self.main_window.act_out_zoom = self._add_icon_btn(
+            tb,
+            icon_shape("zoom_out"),
+            "Back to Parent (Out-zoom)",
+            lambda: self.main_window.navigate_to_parent()
+        )
+        self.main_window.act_out_zoom.setVisible(False)  # Zpočátku skryté
+        
+        tb.addSeparator()
         self._add_btn(tb, "Create OPL", lambda: self.main_window.import_opl_dialog())
         tb.addSeparator()
         self._add_btn(tb, "Generate OPL", lambda: self.main_window.open_nl_to_opl_dialog())

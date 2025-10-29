@@ -112,17 +112,120 @@ class MainWindow(QMainWindow):
     
     # ========== Tab management ==========
     
-    def _new_canvas(self, title: str | None = None):
+    def _new_canvas(self, title: str | None = None, parent_view=None, zoomed_process_id=None):
         """Vytvoří nový canvas v novém tabu."""
         scene = GridScene(self)
         scene.setSceneRect(-5000, -5000, 10000, 10000)
 
-        view = EditorView(scene, self)
+        view = EditorView(scene, self, parent_view=parent_view, zoomed_process_id=zoomed_process_id)
+        
+        # Pokud je to in-zoom, zaregistruj ho u rodiče
+        if parent_view is not None:
+            parent_view.child_views.append(view)
+        
         idx = self.tabs.addTab(view, title or f"Canvas {self.tabs.count() + 1}")
         self.tabs.setCurrentIndex(idx)
 
         self._activate_view(view)
         return view
+
+    def create_in_zoom_canvas(self, process_item):
+        """
+        Vytvoří in-zoom canvas pro daný proces, nebo přepne na existující.
+        
+        Args:
+            process_item: ProcessItem, jehož vnitřek chceme modelovat
+        """
+        current_view = self.view
+        
+        # Nejprve zkontroluj, zda už existuje in-zoom tab pro tento proces
+        existing_tab_idx = self._find_in_zoom_tab_for_process(process_item.node_id, current_view)
+        if existing_tab_idx >= 0:
+            # Tab už existuje, přepni na něj
+            self.tabs.setCurrentIndex(existing_tab_idx)
+            self.statusBar().showMessage(f"Přepnuto na existující in-zoom: {process_item.label}", 2000)
+            return
+        
+        # Tab neexistuje, vytvoř nový
+        # Sestavení názvu tabu s breadcrumb (např. "SD1 → Process")
+        breadcrumb_parts = []
+        
+        # Projdi hierarchii směrem nahoru a sestav breadcrumb
+        temp_view = current_view
+        while temp_view is not None:
+            if temp_view.zoomed_process_id:
+                # Najdi proces v parent view
+                if temp_view.parent_view:
+                    parent_scene = temp_view.parent_view.scene()
+                    for item in parent_scene.items():
+                        if hasattr(item, 'node_id') and item.node_id == temp_view.zoomed_process_id:
+                            breadcrumb_parts.insert(0, item.label)
+                            break
+            else:
+                # Root level - použij název tabu
+                tab_idx = self._find_tab_index_for_view(temp_view)
+                if tab_idx >= 0:
+                    breadcrumb_parts.insert(0, self.tabs.tabText(tab_idx))
+            temp_view = temp_view.parent_view
+        
+        # Přidej aktuální proces
+        breadcrumb_parts.append(process_item.label)
+        tab_title = " → ".join(breadcrumb_parts)
+        
+        # Přidej prefix pro indikaci in-zoom
+        tab_title = "🔍 " + tab_title
+        
+        # Vytvoř nový in-zoom canvas
+        new_view = self._new_canvas(
+            title=tab_title,
+            parent_view=current_view,
+            zoomed_process_id=process_item.node_id
+        )
+        
+        self.statusBar().showMessage(f"In-zoom: {process_item.label}", 2000)
+    
+    def _find_in_zoom_tab_for_process(self, process_id: str, parent_view):
+        """
+        Najde existující in-zoom tab pro daný proces a parent view.
+        
+        Args:
+            process_id: ID procesu, jehož in-zoom hledáme
+            parent_view: Rodičovský view, ze kterého byl in-zoom vytvořen
+            
+        Returns:
+            Index tabu nebo -1, pokud nebyl nalezen
+        """
+        for i in range(self.tabs.count()):
+            view = self.tabs.widget(i)
+            if (hasattr(view, 'zoomed_process_id') and 
+                view.zoomed_process_id == process_id and
+                hasattr(view, 'parent_view') and
+                view.parent_view == parent_view):
+                return i
+        return -1
+    
+    def navigate_to_parent(self):
+        """Naviguje zpět na parent view (out-zoom)."""
+        if hasattr(self.view, 'parent_view') and self.view.parent_view is not None:
+            # Najdi tab index parent view
+            parent_idx = self._find_tab_index_for_view(self.view.parent_view)
+            if parent_idx >= 0:
+                self.tabs.setCurrentIndex(parent_idx)
+                self.statusBar().showMessage("Out-zoom", 2000)
+    
+    def update_out_zoom_button_visibility(self):
+        """Aktualizuje viditelnost out-zoom tlačítka podle aktuálního view."""
+        if hasattr(self, 'act_out_zoom'):
+            has_parent = (hasattr(self.view, 'parent_view') and 
+                         self.view.parent_view is not None)
+            self.act_out_zoom.setVisible(has_parent)
+    
+    def _find_tab_index_for_view(self, view):
+        """Najde index tabu pro daný view."""
+        for i in range(self.tabs.count()):
+            if self.tabs.widget(i) == view:
+                return i
+        return -1
 
     def _activate_view(self, view):
         """Aktivuje daný view a připojí signály."""
@@ -139,6 +242,9 @@ class MainWindow(QMainWindow):
         # Vyčistí overlaye/stav linku
         self.view.clear_overlays()
         self.pending_link_src = None
+        
+        # Aktualizuj viditelnost out-zoom tlačítka
+        self.update_out_zoom_button_visibility()
 
     def _current_tab_title(self) -> str:
         """Vrátí text aktivní záložky nebo fallback."""
@@ -158,7 +264,11 @@ class MainWindow(QMainWindow):
     def _close_current_tab(self):
         """Zavře aktuální tab."""
         idx = self.tabs.currentIndex()
-        if idx >= 0:
+        self._close_tab_at_index(idx)
+    
+    def _close_tab_at_index(self, idx: int):
+        """Zavře tab na daném indexu."""
+        if idx >= 0 and idx < self.tabs.count():
             self.tabs.removeTab(idx)
         
         # Když nic nezbyde, založí prázdný canvas

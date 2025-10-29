@@ -190,6 +190,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     - Tmavě modrý obrys (0, 0, 128)
     - Bílá výplň
     - Podporuje změnu velikosti pomocí resize handles
+    - Dvojklik otevře in-zoom view (modelování vnitřku procesu)
     """
     def __init__(self, rect: QRectF, label: str = "Process", essence: str = "physical", affiliation: str = "systemic"):
         super().__init__(rect)
@@ -215,6 +216,17 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     def boundingRect(self) -> QRectF:
         m = 8
         return super().boundingRect().adjusted(-m, -m, m, m)
+
+    def mouseDoubleClickEvent(self, event):
+        """Dvojklik na proces otevře in-zoom view (modelování vnitřku procesu)."""
+        if event.button() == Qt.LeftButton:
+            from ui.main_window import MainWindow  # lazy import
+            main_win = MainWindow.instance()
+            if main_win:
+                main_win.create_in_zoom_canvas(self)
+            event.accept()
+            return
+        super().mouseDoubleClickEvent(event)
 
     def paint(self, painter: QPainter, option, widget=None):
         # Nastavení pera podle affiliation

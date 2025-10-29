@@ -26,7 +26,14 @@ class RenameableTabBar(QTabBar):
             return
         menu = QMenu(self)
         act_rename = menu.addAction("Rename")
-        # Případně by šlo přidat i "Close Tab" apod.
+        act_close = menu.addAction("Close Tab")
         chosen = menu.exec(event.globalPos())
         if chosen == act_rename:
             self.renameRequested.emit(idx)
+        elif chosen == act_close:
+            # Zavolá close tab na parent widget (QTabWidget)
+            parent_tab_widget = self.parent()
+            if parent_tab_widget and hasattr(parent_tab_widget, 'parent'):
+                main_window = parent_tab_widget.parent()
+                if main_window and hasattr(main_window, '_close_tab_at_index'):
+                    main_window._close_tab_at_index(idx)

@@ -21,7 +21,7 @@ class EditorView(QGraphicsView):
     Implementuje různé režimy editace a zobrazuje náhledy (ghost items)
     při přidávání nových prvků.
     """
-    def __init__(self, scene, app):
+    def __init__(self, scene, app, parent_view=None, zoomed_process_id=None):
         super().__init__(scene)
         self.app = app
         self.setRenderHints(self.renderHints() | self.renderHints().Antialiasing)
@@ -33,6 +33,11 @@ class EditorView(QGraphicsView):
         self.ghost_item = None
         self.ghost_kind = None
         self.temp_link = None
+        
+        # In-zoom metadata
+        self.parent_view = parent_view  # Odkaz na parent view (pro out-zoom)
+        self.zoomed_process_id = zoomed_process_id  # ID procesu, jehož vnitřek zobrazujeme
+        self.child_views = []  # Seznam in-zoom views vytvořených z tohoto view
 
     def wheelEvent(self, event):
         if event.modifiers() & Qt.ControlModifier:
