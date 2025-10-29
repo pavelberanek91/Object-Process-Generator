@@ -5,9 +5,10 @@ Rozšiřuje QGraphicsView o:
 - Ghost preview při přidávání prvků
 - Temporary link při vytváření vazeb
 - Zoom pomocí Ctrl+kolečko myši
+- Panning (posun plátna) pomocí pravého tlačítka myši
 """
 from __future__ import annotations
-from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtCore import QPointF, QRectF, Qt, QPoint
 from PySide6.QtGui import QPainterPath, QPen
 from PySide6.QtWidgets import QGraphicsView, QGraphicsItem, QGraphicsPathItem
 from constants import Mode, NODE_W, NODE_H, STATE_W, STATE_H
@@ -34,6 +35,10 @@ class EditorView(QGraphicsView):
         self.ghost_kind = None
         self.temp_link = None
         
+        # Panning (posun plátna pravým tlačítkem)
+        self._is_panning = False
+        self._pan_start_pos = QPoint()
+        
         # In-zoom metadata
         self.parent_view = parent_view  # Odkaz na parent view (pro out-zoom)
         self.zoomed_process_id = zoomed_process_id  # ID procesu, jehož vnitřek zobrazujeme
@@ -46,6 +51,14 @@ class EditorView(QGraphicsView):
             super().wheelEvent(event)
 
     def mousePressEvent(self, event):
+        # Pravé tlačítko → zahájení panningu
+        if event.button() == Qt.RightButton:
+            self._is_panning = True
+            self._pan_start_pos = event.pos()
+            self.setCursor(Qt.ClosedHandCursor)
+            event.accept()
+            return
+        
         scene_pos = self.mapToScene(event.pos())
         mode = self.app.mode
         if mode == Mode.ADD_OBJECT:
@@ -61,6 +74,17 @@ class EditorView(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event):
+        # Panning - posun plátna
+        if self._is_panning:
+            delta = event.pos() - self._pan_start_pos
+            self._pan_start_pos = event.pos()
+            
+            # Posun scrollbarů
+            self.horizontalScrollBar().setValue(self.horizontalScrollBar().value() - delta.x())
+            self.verticalScrollBar().setValue(self.verticalScrollBar().value() - delta.y())
+            event.accept()
+            return
+        
         scene_pos = self.mapToScene(event.pos())
         mode = self.app.mode
         if mode in (Mode.ADD_OBJECT, Mode.ADD_PROCESS):
@@ -76,6 +100,20 @@ class EditorView(QGraphicsView):
         else:
             self.clear_ghost(); self.clear_temp_link()
         super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event):
+        # Ukončení panningu
+        if event.button() == Qt.RightButton and self._is_panning:
+            self._is_panning = False
+            # Obnov kurzor podle režimu
+            if self.app.mode == Mode.SELECT:
+                self.setCursor(Qt.ArrowCursor)
+            else:
+                self.setCursor(Qt.CrossCursor)
+            event.accept()
+            return
+        
+        super().mouseReleaseEvent(event)
 
     def clear_overlays(self):
         self.clear_ghost(); self.clear_temp_link()

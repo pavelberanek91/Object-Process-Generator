@@ -65,6 +65,9 @@ class MainWindow(QMainWindow):
             "meta": {"format": "opm-mvp-json", "version": 1}
         }
         
+        # Název root canvasu (pro synchronizaci s hierarchií)
+        self._root_canvas_name = "🏠 Root Canvas"
+        
         # Ochrana proti rekurzivním voláním
         self._is_syncing = False
         self._is_refreshing_hierarchy = False
@@ -89,7 +92,7 @@ class MainWindow(QMainWindow):
     
     def _init_first_canvas(self):
         """Vytvoří první canvas."""
-        self._new_canvas("Canvas 1")
+        self._new_canvas("🏠 Root Canvas")
     
     def _init_toolbars(self):
         """Inicializuje toolbary."""
@@ -580,7 +583,7 @@ class MainWindow(QMainWindow):
         
         # Když nic nezbyde, založí prázdný canvas
         if self.tabs.count() == 0:
-            self._new_canvas("Canvas 1")
+            self._new_canvas("🏠 Root Canvas")
 
     def _rename_tab(self, idx: int):
         """Přejmenuje tab a odpovídající proces."""
@@ -603,8 +606,12 @@ class MainWindow(QMainWindow):
                     # Aktualizuj název tabu
                     self.tabs.setTabText(idx, f"🔍 {new}")
                 else:
-                    # Root canvas - pouze přejmenuj tab
-                    self.tabs.setTabText(idx, new)
+                    # Root canvas - přejmenuj tab a aktualizuj globální název
+                    new_name = f"🏠 {new}"
+                    self.tabs.setTabText(idx, new_name)
+                    self._root_canvas_name = new_name
+                    # Refresh hierarchického panelu
+                    self.refresh_hierarchy_panel()
     
     # ========== Mode & zoom ==========
     

@@ -69,7 +69,11 @@ class ProcessHierarchyPanel(QDockWidget):
             
             # Vytvoř kořenovou položku pro root canvas
             root_item = QTreeWidgetItem(self.tree)
-            root_item.setText(0, "🏠 Root Canvas")
+            # Použij název z MainWindow
+            root_canvas_name = "🏠 Root Canvas"  # Default
+            if self.main_window and hasattr(self.main_window, '_root_canvas_name'):
+                root_canvas_name = self.main_window._root_canvas_name
+            root_item.setText(0, root_canvas_name)
             root_item.setData(0, Qt.UserRole, None)  # None značí root
             
             # Ulož mapping pro root
