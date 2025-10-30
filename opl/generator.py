@@ -72,9 +72,9 @@ def preview_opl(scene) -> str:
     # === Inicializace kontejnerů pro sběr vazeb ===
     # Procedurální vazby - seskupené podle procesů
     buckets = defaultdict(lambda: {
-        "consumes": [], "inputs": [], "yields": [], "affects": [], "agents": [], "instruments": [],
+        "consumes": [], "yields": [], "affects": [], "agents": [], "instruments": [],
     })
-    # Speciální: páry input-output stavů (pro "changes from...to...")
+    # Speciální: páry consumption-result stavů (pro "changes from...to...")
     proc_state_links: Dict[str, Dict[str, Dict[str, str]]] = defaultdict(lambda: defaultdict(dict))
     # Strukturální vazby - seskupené podle typu
     struct_b = {
@@ -107,29 +107,29 @@ def preview_opl(scene) -> str:
         elif s_kind in {"object", "state"} and d_kind == "process":
             if lt == "consumption":   
                 buckets[d]["consumes"].append(ent(s))
+                # pokud jde o stav -> uložíme pro potenciální "changes from...to..." pár
+                if s_kind == "state" and s in id_to_parent:
+                    obj_label = nodes[id_to_parent[s]][1]
+                    proc_state_links[d][obj_label]["in"] = s_label
             elif lt == "agent":       
                 buckets[d]["agents"].append(ent(s))
             elif lt == "instrument":  
                 buckets[d]["instruments"].append(ent(s))
             elif lt == "effect":      
                 buckets[d]["affects"].append(ent(s))
-            elif lt == "input":       
-                buckets[d]["inputs"].append(ent(s))
-                # pokud jde o stav -> uložíme jako input state
-                if s_kind == "state" and s in id_to_parent:
-                    obj_label = nodes[id_to_parent[s]][1]
-                    proc_state_links[d][obj_label]["in"] = s_label
 
         # === Případ: PROCES → OBJEKT/STAV (procedurální vazby opačným směrem) ===
         elif s_kind == "process" and d_kind in {"object", "state"}:
             if lt == "effect":           
                 buckets[s]["affects"].append(ent(d))
-            elif lt in ("result", "output"): 
+            elif lt == "result": 
                 if d_kind == "object":
                     # celý objekt -> yield
                     buckets[s]["yields"].append(ent(d))
                 elif d_kind == "state" and d in id_to_parent:
-                    # stav -> jen pro změnový pár, ne yield
+                    # stav -> přidat do yields (formátuje se jako "A at state S1")
+                    # a zároveň uložit pro potenciální "changes from...to..." pár
+                    buckets[s]["yields"].append(ent(d))
                     obj_label = nodes[id_to_parent[d]][1]
                     proc_state_links[s][obj_label]["out"] = d_label
 
@@ -157,18 +157,26 @@ def preview_opl(scene) -> str:
         if not pname: 
             continue
 
-        # input/output pairs
+        # Zjistíme, které stavy jsou součástí "changes from...to..." páru
+        states_in_changes = set()
         if pid in proc_state_links:
             for obj, pair in proc_state_links[pid].items():
                 if "in" in pair and "out" in pair:
                     lines.append(f"{pname} changes {obj} from {pair['in']} to {pair['out']}.")
+                    # Označíme oba stavy, aby se negenerovaly v consumes/yields
+                    states_in_changes.add(f"{obj} at state {pair['in']}")
+                    states_in_changes.add(f"{obj} at state {pair['out']}")
 
-        if b["consumes"]:    
-            lines.append(f"{pname} consumes {_opl_join(b['consumes'])}.")
-        if b["inputs"]:      
-            lines.append(f"{pname} takes {_opl_join(b['inputs'])} as input.")
-        if b["yields"]:      
-            lines.append(f"{pname} yields {_opl_join(b['yields'])}.")
+        if b["consumes"]:
+            # Vyfiltrujeme stavy, které jsou součástí "changes from...to..." páru
+            consumes_filtered = [c for c in b["consumes"] if c not in states_in_changes]
+            if consumes_filtered:
+                lines.append(f"{pname} consumes {_opl_join(consumes_filtered)}.")
+        if b["yields"]:
+            # Vyfiltrujeme stavy, které jsou součástí "changes from...to..." páru
+            yields_filtered = [y for y in b["yields"] if y not in states_in_changes]
+            if yields_filtered:
+                lines.append(f"{pname} yields {_opl_join(yields_filtered)}.")
         if b["affects"]:     
             lines.append(f"{pname} affects {_opl_join(b['affects'])}.")
         if b["agents"]:      

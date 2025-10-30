@@ -160,7 +160,7 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
         src = id_to_item.get(l["src"])
         dst = id_to_item.get(l["dst"])
         if src and dst:
-            lt = l.get("link_type", "input")
+            lt = l.get("link_type", "consumption")
             ok, msg = allowed_link(src, dst, lt)
             if not ok:
                 invalid += 1

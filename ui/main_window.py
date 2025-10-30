@@ -1077,16 +1077,13 @@ class MainWindow(QMainWindow):
             return
         
         # Rychlé přepínání typu linku čísly
-        if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, 
-                          Qt.Key_5, Qt.Key_6, Qt.Key_7):
+        if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5):
             mapping = {
-                Qt.Key_1: "input",
-                Qt.Key_2: "output",
-                Qt.Key_3: "consumption",
-                Qt.Key_4: "result",
-                Qt.Key_5: "effect",
-                Qt.Key_6: "agent",
-                Qt.Key_7: "instrument",
+                Qt.Key_1: "consumption",
+                Qt.Key_2: "result",
+                Qt.Key_3: "effect",
+                Qt.Key_4: "agent",
+                Qt.Key_5: "instrument",
             }
             lt = mapping.get(event.key())
             sel = [it for it in self.scene.selectedItems() if isinstance(it, LinkItem)]

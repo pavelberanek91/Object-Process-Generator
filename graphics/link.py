@@ -76,9 +76,7 @@ class LabelHandle(QGraphicsSimpleTextItem):
 
 class LinkItem(QGraphicsPathItem):
     STYLE_MAP = {
-        "input": {"arrow": "dst"},
         "consumption": {"arrow": "dst"},
-        "output": {"arrow": "dst"},
         "result": {"arrow": "dst"},
         "effect": {"arrow": "both"},
         "agent": {"circle": ("filled", "dst")},
@@ -91,7 +89,7 @@ class LinkItem(QGraphicsPathItem):
     
     CARDINALITY_TYPES = {"aggregation", "exhibition", "generalization", "instantiation"}
 
-    def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="input", label: str=""):
+    def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="consumption", label: str=""):
         super().__init__()
         _load_structural_icons()  # Načteme ikony při první inicializaci
         self.setZValue(1)
@@ -181,7 +179,7 @@ class LinkItem(QGraphicsPathItem):
         return br.adjusted(-12, -12, 12, 12)
 
     def _style(self):
-        return self.STYLE_MAP.get(self.link_type, self.STYLE_MAP["input"])
+        return self.STYLE_MAP.get(self.link_type, self.STYLE_MAP["consumption"])
 
     def _point_near(self, a: QPointF, b: QPointF, end: str, offset: float=14) -> QPointF:
         dx = b.x()-a.x(); dy = b.y()-a.y()

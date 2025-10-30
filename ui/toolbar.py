@@ -237,13 +237,13 @@ class ToolbarManager:
         self.main_window.cmb_default_link_type.addItem("─── Procedural ───")
         self.main_window.cmb_default_link_type.model().item(0).setEnabled(False)
         self.main_window.cmb_default_link_type.addItems([
-            "input", "output", "consumption", "result", "effect", "agent", "instrument"
+            "consumption", "result", "effect", "agent", "instrument"
         ])
         
         # Přidej oddělovač a strukturální linky
-        self.main_window.cmb_default_link_type.insertSeparator(8)
+        self.main_window.cmb_default_link_type.insertSeparator(6)  # Po 5 procedurálních + 1 nadpis
         self.main_window.cmb_default_link_type.addItem("─── Structural ───")
-        self.main_window.cmb_default_link_type.model().item(9).setEnabled(False)
+        self.main_window.cmb_default_link_type.model().item(7).setEnabled(False)
         self.main_window.cmb_default_link_type.addItems([
             "aggregation", "exhibition", "generalization", "instantiation"
         ])

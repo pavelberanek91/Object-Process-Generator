@@ -56,13 +56,13 @@ class PropertiesPanel(QDockWidget):
         self.cmb_link_type.addItem("─── Procedural ───")
         self.cmb_link_type.model().item(0).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
-            "input", "output", "consumption", "result", "effect", "agent", "instrument"
+            "consumption", "result", "effect", "agent", "instrument"
         ])
         
         # Přidej oddělovač a strukturální linky
-        self.cmb_link_type.insertSeparator(8)  # Po 7 procedurálních + 1 nadpis
+        self.cmb_link_type.insertSeparator(6)  # Po 5 procedurálních + 1 nadpis
         self.cmb_link_type.addItem("─── Structural ───")
-        self.cmb_link_type.model().item(9).setEnabled(False)  # Zakáže výběr nadpisu
+        self.cmb_link_type.model().item(7).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
             "aggregation", "exhibition", "generalization", "instantiation"
         ])

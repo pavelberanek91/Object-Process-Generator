@@ -43,7 +43,7 @@ class DiagramLink:
         id: Unikátní identifikátor vazby
         src: ID zdrojového uzlu
         dst: ID cílového uzlu
-        link_type: Typ vazby (např. "input", "consumption", "aggregation")
+        link_type: Typ vazby (např. "consumption", "result", "aggregation")
         label: Volitelný textový popisek vazby
         type_dx: X offset pozice textu typu vazby od středu linky
         type_dy: Y offset pozice textu typu vazby od středu linky

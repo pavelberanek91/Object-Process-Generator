@@ -14,13 +14,13 @@ MIN_NODE_H  = 50  # Minimální výška uzlu při změně velikosti
 # === Typy vazeb (linků) v OPM ===
 LINK_TYPES = [
     # Procedurální vazby (vztahy mezi procesy a objekty)
-    "input", "consumption", "output", "result", "effect", "agent", "instrument",
+    "consumption", "result", "effect", "agent", "instrument",
     # Strukturální vazby (vztahy mezi objekty navzájem)
     "aggregation", "exhibition", "generalization", "instantiation",
 ]
 
 # Rozdělení typů vazeb pro snadnější validaci
-PROCEDURAL_TYPES = {"input", "consumption", "output", "result", "effect", "agent", "instrument"}
+PROCEDURAL_TYPES = {"consumption", "result", "effect", "agent", "instrument"}
 STRUCTURAL_TYPES  = {"aggregation", "exhibition", "generalization", "instantiation"}
 
 # === Režimy editoru ===

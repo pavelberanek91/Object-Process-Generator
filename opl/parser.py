@@ -233,7 +233,7 @@ def build_from_opl(app, text: str):
             p = get_or_create_process(m.group("p"))
             # Může být více objektů oddělených čárkami a "and"
             for o in _split_names(m.group("objs")):
-                ensure_link(get_or_create_object(o), p, "input")
+                ensure_link(get_or_create_object(o), p, "consumption")
             continue
 
         # === Yield/Result - proces vytváří objekty ===
@@ -370,8 +370,8 @@ def build_from_opl(app, text: str):
             s_from = get_or_create_state(obj, m.group("from"))
             s_to = get_or_create_state(obj, m.group("to"))
             # Vstupní stav → proces, proces → výstupní stav
-            ensure_link(s_from, p, "input")
-            ensure_link(p, s_to, "output")
+            ensure_link(s_from, p, "consumption")
+            ensure_link(p, s_to, "result")
             continue
 
         # === Can be - alternativní syntaxe pro stavy ===
