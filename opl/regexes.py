@@ -83,8 +83,8 @@ RE_INSTANCES = re.compile(r'^\s*(?P<class>.+?)\s+has\s+instances\s+(?P<insts>.+?
 RE_STATES = re.compile(r'^\s*(?P<obj>.+?)\s+can\s+be\s+(?P<states>.+?)\.\s*$', re.I)
 
 # Simple "is a" - jednoduchá generalizace
-# Příklad: "Car is a Vehicle."
-RE_IS_A = re.compile(r'^\s*(?P<sub>\w+)\s+is\s+a[n]?\s+(?P<super>\w+)\.\s*$', re.I)
+# Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
+RE_IS_A = re.compile(r'^\s*(?P<sub>.+?)\s+is\s+a[n]?\s+(?P<super>.+?)\.\s*$', re.I)
 
 # Simple "is an instance of" - jednoduchá instantiace
 # Příklad: "John is an instance of Person."
@@ -109,6 +109,6 @@ RE_CANBE = re.compile(
 # Příklad: "A is a informatical and systemic object."
 # Příklad: "B is a physical and environmental process."
 RE_DEFINITION = re.compile(
-    r'^\s*(?P<name>\w+)\s+is\s+a[n]?\s+(?P<essence>physical|informatical)\s+and\s+(?P<affiliation>systemic|environmental)\s+(?P<kind>object|process)\.+\s*$',
+    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+(?P<essence>physical|informatical)\s+and\s+(?P<affiliation>systemic|environmental)\s+(?P<kind>object|process)\.+\s*$',
     re.I
 )
