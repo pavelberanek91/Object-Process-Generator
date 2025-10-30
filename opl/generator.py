@@ -95,8 +95,16 @@ def preview_opl(scene) -> str:
         d_kind, d_label = nodes.get(d, ("?", "?"))
         lt = it.link_type.lower()
 
+        # === Nejdřív zkontrolujeme strukturální vazby (mají přednost) ===
+        if lt in struct_b and s_kind in ("object", "process") and d_kind in ("object", "process"):
+            # Všechny strukturální vazby: marker ikony je vždy tam, kde začíná vazba (src)
+            # Ale v OPL sémantice marker má být u specifického uzlu (celek, rodič, třída)
+            # Uživatel při kreslení klikne od "běžného" uzlu k "významnému" uzlu (s markerem)
+            # Proto musíme prohodit src↔dst pro všechny strukturální vazby
+            struct_b[lt][ent(d)].append(ent(s))
+        
         # === Případ: OBJEKT/STAV → PROCES (procedurální vazby) ===
-        if s_kind in {"object", "state"} and d_kind == "process":
+        elif s_kind in {"object", "state"} and d_kind == "process":
             if lt == "consumption":   
                 buckets[d]["consumes"].append(ent(s))
             elif lt == "agent":       
@@ -124,13 +132,6 @@ def preview_opl(scene) -> str:
                     # stav -> jen pro změnový pár, ne yield
                     obj_label = nodes[id_to_parent[d]][1]
                     proc_state_links[s][obj_label]["out"] = d_label
-            
-        elif s_kind in ("object","process") and d_kind in ("object","process"):
-            # Všechny strukturální vazby: marker ikony je vždy tam, kde začíná vazba (src)
-            # Ale v OPL sémantice marker má být u specifického uzlu (celek, rodič, třída)
-            # Uživatel při kreslení klikne od "běžného" uzlu k "významnému" uzlu (s markerem)
-            # Proto musíme prohodit src↔dst pro všechny strukturální vazby
-            struct_b[lt][ent(d)].append(ent(s))
 
     # seznam vygenerovanych OPL vet
     lines: List[str] = []

@@ -889,7 +889,12 @@ class MainWindow(QMainWindow):
             dst_is_process = isinstance(dst_item, ProcessItem)
             dst_is_object = isinstance(dst_item, ObjectItem)
             
-            # Povoleno pouze proces→proces nebo objekt→objekt
+            # Exhibition může být mezi libovolnými uzly (objekt-objekt, proces-proces, objekt-proces)
+            if link_type == "exhibition":
+                if (src_is_process or src_is_object) and (dst_is_process or dst_is_object):
+                    return True, ""
+            
+            # Ostatní strukturální vztahy pouze proces→proces nebo objekt→objekt
             if src_is_process and dst_is_process:
                 return True, ""
             elif src_is_object and dst_is_object:
