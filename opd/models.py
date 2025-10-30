@@ -18,7 +18,7 @@ class DiagramNode:
         h: Výška uzlu
         parent_id: ID rodičovského uzlu (pouze pro stavy, které jsou vždy uvnitř objektu)
         parent_process_id: ID rodičovského procesu (pro podprocesy a objekty v in-zoom view)
-        essence: Podstata ("physical" nebo "informational", pouze pro objekty a procesy)
+        essence: Podstata ("physical" nebo "informatical", pouze pro objekty a procesy)
         affiliation: Příslušnost ("systemic" nebo "environmental", pouze pro objekty a procesy)
     """
     id: str

@@ -82,7 +82,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     def __init__(self, rect: QRectF, label: str = "Object", essence: str = "physical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("object", label)
-        self.essence = essence  # "physical" nebo "informational"
+        self.essence = essence  # "physical" nebo "informatical"
         self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento objekt
         self.setBrush(QBrush(Qt.white))
@@ -197,7 +197,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     def __init__(self, rect: QRectF, label: str = "Process", essence: str = "physical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("process", label)
-        self.essence = essence  # "physical" nebo "informational"
+        self.essence = essence  # "physical" nebo "informatical"
         self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento proces
         self.setBrush(QBrush(Qt.white))

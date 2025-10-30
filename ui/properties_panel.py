@@ -37,7 +37,7 @@ class PropertiesPanel(QDockWidget):
         # essence (podstata)
         self.lbl_essence = QLabel("Essence", self.panel_props)
         self.cmb_essence = QComboBox(self.panel_props)
-        self.cmb_essence.addItems(["physical", "informational"])
+        self.cmb_essence.addItems(["physical", "informatical"])
         self.cmb_essence.currentTextChanged.connect(self._on_essence_changed)
         form.addRow(self.lbl_essence, self.cmb_essence)
 
@@ -221,7 +221,7 @@ class PropertiesPanel(QDockWidget):
             it.update_path()
     
     def _on_essence_changed(self, text: str):
-        """Handler pro změnu essence (physical/informational)."""
+        """Handler pro změnu essence (physical/informatical)."""
         it = self._get_selected_item()
         if isinstance(it, (ObjectItem, ProcessItem)):
             it.essence = text

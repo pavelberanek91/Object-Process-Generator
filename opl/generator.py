@@ -136,6 +136,17 @@ def preview_opl(scene) -> str:
     # seznam vygenerovanych OPL vet
     lines: List[str] = []
 
+    # 0) Definice objektů a procesů s jejich vlastnostmi
+    for it in scene.items():
+        if isinstance(it, ObjectItem):
+            essence = getattr(it, 'essence', 'physical')
+            affiliation = getattr(it, 'affiliation', 'systemic')
+            lines.append(f"{it.label} is a {essence} and {affiliation} object.")
+        elif isinstance(it, ProcessItem):
+            essence = getattr(it, 'essence', 'physical')
+            affiliation = getattr(it, 'affiliation', 'systemic')
+            lines.append(f"{it.label} is a {essence} and {affiliation} process.")
+
     # 1) Objekty a jejich stavy
     object_states: Dict[str, List[str]] = defaultdict(list)
     for it in scene.items():

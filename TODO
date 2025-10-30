@@ -11,22 +11,21 @@
 [x] "result stavovy" -≥ ta sama oprava na at state
 [x] "input a output link pair" -≥ "ted to mam takes input a yields", musi byt input i output a pak bude hlaska "B changes A from as1 to as2"
 [ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
-[ ] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
+[x] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
 [ ] "exhibition-characterization stavovy"
 ---
 [x] Vytvorit postranni listu s vlastnostmi
-[ ] Dat vsechny linky do toolbaru jako opcad
 ---
 [ ] OPL ma mit bold pro nazvy objektu a procesu a stavu
 ---
-[ ] veci jsou interni a externi
-[ ] veci jsou fyzicke a informacni
+[x] veci jsou interni a externi
+[x] veci jsou fyzicke a informacni
 ---
 [x] Posunout znacky linku doprostred cary
 [ ] Nahradit znacky spravymi
 [ ] Vyresit ortogonalitu vztahu
 [x] Pridat kardinality
-[ ] vlastni labely linku
+[x] vlastni labely linku
 ---
 [ ] Poladit prompt
 [ ] Vymyslet priklady na demonstraci, ktere jsou funkci
@@ -35,6 +34,6 @@
 [ ] generovat navrhove vzory z opl
 ---
 [ ] command undo a redo
-[ ] pridat zooming
+[x] pridat zooming
 [ ] vytvorit simulacni model pomoci asi Petriho siti
 ---

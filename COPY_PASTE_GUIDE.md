@@ -36,7 +36,7 @@ Zkopíruje a ihned vloží vybrané prvky (kombinace Copy + Paste).
 - Label (název)
 - Pozice (s offsetem při vkládání)
 - Velikost (šířka, výška)
-- Essence (physical/informational)
+- Essence (physical/informatical)
 - Affiliation (systemic/environmental)
 - Parent process ID (pro in-zoom views)
 - Kardinality vazeb (card_src, card_dst)
