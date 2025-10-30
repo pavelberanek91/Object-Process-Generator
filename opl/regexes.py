@@ -72,6 +72,10 @@ RE_EXHIBITS = re.compile(r'^\s*(?P<obj>.+?)\s+exhibit(?:s)?\s+(?P<attrs>.+?)\.\s
 # Příklad: "Vehicle generalizes Car and Bike."
 RE_GENER = re.compile(r'^\s*(?P<super>.+?)\s+generalize(?:s)?\s+(?P<subs>.+?)\.\s*$', re.I)
 
+# Generalization - alternativní syntaxe (podtřídy "are" nadřazená třída)
+# Příklad: "Freezing, Dehydrating, and Canning are Spoilage Slowing."
+RE_ARE = re.compile(r'^\s*(?P<subs>.+?)\s+are\s+(?P<super>.+?)\.\s*$', re.I)
+
 # Instantiation - třída má konkrétní instance
 # Příklad: "Person has instances John, Mary and Bob."
 RE_INSTANCES = re.compile(r'^\s*(?P<class>.+?)\s+has\s+instances\s+(?P<insts>.+?)\.\s*$', re.I)

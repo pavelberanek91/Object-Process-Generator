@@ -377,6 +377,16 @@ def build_from_opl(app, text: str):
                 ensure_link(get_or_create_object(sub), sup, "generalization")
             continue
 
+        # === Generalization - alternativní syntaxe (podtřídy "are" nadřazená třída) ===
+        # Příklad: "Freezing, Dehydrating, and Canning are Spoilage Slowing."
+        m = RE_ARE.match(line)
+        if m:
+            sup = get_or_create_object(m.group("super"))
+            # Může být více podtříd oddělených čárkami a "and"
+            for sub in _split_names(m.group("subs")):
+                ensure_link(get_or_create_object(sub), sup, "generalization")
+            continue
+
         # === Instantiation - třída má konkrétní instance ===
         # Příklad: "Person has instances John, Mary and Bob."
         m = RE_INSTANCES.match(line)
