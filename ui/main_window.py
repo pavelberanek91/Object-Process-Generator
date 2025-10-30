@@ -796,6 +796,13 @@ class MainWindow(QMainWindow):
         if mode != Mode.ADD_LINK:
             self.pending_link_src = None
             self.view.clear_temp_link()
+        
+        # Vynutit okamžitou aktualizaci ghost overlay pro nový mód
+        if mode in (Mode.ADD_OBJECT, Mode.ADD_PROCESS, Mode.ADD_STATE):
+            # Získat aktuální pozici kurzoru
+            cursor_pos = self.view.mapFromGlobal(self.view.cursor().pos())
+            scene_pos = self.view.mapToScene(cursor_pos)
+            self.view.update_ghost(scene_pos)
 
     def set_zoom(self, scale: float):
         """Nastaví konkrétní úroveň zoomu."""
