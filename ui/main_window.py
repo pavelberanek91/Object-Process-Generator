@@ -81,9 +81,10 @@ class MainWindow(QMainWindow):
         self._init_tabs()
         self._init_first_canvas()
         self._init_actions()
-        self._init_toolbars()
+        # Nejprve vytvoř dokovací panely, aby na ně mohl toolbar/menu odkazovat
         self._init_properties_panel()
         self._init_hierarchy_panel()
+        self._init_toolbars()
     
     def _init_tabs(self):
         """Inicializuje tab widget."""

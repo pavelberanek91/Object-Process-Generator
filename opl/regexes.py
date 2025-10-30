@@ -109,6 +109,6 @@ RE_CANBE = re.compile(
 # Příklad: "A is a informatical and systemic object."
 # Příklad: "B is a physical and environmental process."
 RE_DEFINITION = re.compile(
-    r'^\s*(?P<name>\w+)\s+is\s+a\s+(?P<essence>physical|informatical)\s+and\s+(?P<affiliation>systemic|environmental)\s+(?P<kind>object|process)\.+\s*$',
+    r'^\s*(?P<name>\w+)\s+is\s+a[n]?\s+(?P<essence>physical|informatical)\s+and\s+(?P<affiliation>systemic|environmental)\s+(?P<kind>object|process)\.+\s*$',
     re.I
 )

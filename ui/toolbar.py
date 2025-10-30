@@ -63,6 +63,10 @@ class ToolbarManager:
         self._add_file_menu(tb)
         
         tb.addSeparator()
+        # View menu (toggle dokovacích panelů)
+        self._add_view_menu(tb)
+        
+        tb.addSeparator()
         
         # Out-zoom button (viditelné pouze v in-zoom módu)
         self.main_window.act_out_zoom = self._add_icon_btn(
@@ -132,14 +136,28 @@ class ToolbarManager:
     def _add_file_menu(self, tb: QToolBar):
         """Přidá File menu do toolbaru."""
         file_menu = QMenu("File", self.main_window)
-        file_menu.addAction("New OPD", lambda: self.main_window._new_canvas())
+        # New OPD
+        act_new = QAction(self.main_window)
+        act_new.setShortcut(QKeySequence("Ctrl+N"))
+        act_new.setText("New OPD")
+        act_new.triggered.connect(lambda: self.main_window._new_canvas())
+        file_menu.addAction(act_new)
         file_menu.addSeparator()
-        file_menu.addAction(
-            "Export OPD",
+
+        # Export OPD
+        act_export = QAction(self.main_window)
+        act_export.setShortcut(QKeySequence("Ctrl+S"))
+        act_export.setText("Export OPD")
+        act_export.triggered.connect(
             lambda: save_scene_as_json(self.main_window.scene, self.main_window._current_tab_title())
         )
-        file_menu.addAction(
-            "Import OPD (Current Tab)",
+        file_menu.addAction(act_export)
+
+        # Import OPD (Current Tab)
+        act_import_cur = QAction(self.main_window)
+        act_import_cur.setShortcut(QKeySequence("Ctrl+I"))
+        act_import_cur.setText("Import OPD — Current Tab")
+        act_import_cur.triggered.connect(
             lambda: load_scene_from_json(
                 self.main_window.scene,
                 self.main_window.allowed_link,
@@ -147,8 +165,13 @@ class ToolbarManager:
                 new_tab=False
             )
         )
-        file_menu.addAction(
-            "Import OPD (New Tab)",
+        file_menu.addAction(act_import_cur)
+
+        # Import OPD (New Tab)
+        act_import_new = QAction(self.main_window)
+        act_import_new.setShortcut(QKeySequence("Ctrl+Shift+I"))
+        act_import_new.setText("Import OPD — New Tab")
+        act_import_new.triggered.connect(
             lambda: load_scene_from_json(
                 self.main_window.scene,
                 self.main_window.allowed_link,
@@ -156,14 +179,34 @@ class ToolbarManager:
                 new_tab=True
             )
         )
+        file_menu.addAction(act_import_new)
+
         file_menu.addSeparator()
-        file_menu.addAction(
-            "Rename OPD",
+
+        # Rename OPD
+        act_rename = QAction(self.main_window)
+        act_rename.setShortcut(QKeySequence("Ctrl+R"))
+        act_rename.setText("Rename OPD")
+        act_rename.triggered.connect(
             lambda: self.main_window._rename_tab(self.main_window.tabs.currentIndex())
         )
-        file_menu.addAction("Close Tab", lambda: self.main_window._close_current_tab())
+        file_menu.addAction(act_rename)
+
+        # Close Tab
+        act_close = QAction(self.main_window)
+        act_close.setShortcut(QKeySequence("Ctrl+W"))
+        act_close.setText("Close Tab")
+        act_close.triggered.connect(lambda: self.main_window._close_current_tab())
+        file_menu.addAction(act_close)
+
         file_menu.addSeparator()
-        file_menu.addAction("Exit", QApplication.instance().quit)
+
+        # Exit
+        act_exit = QAction(self.main_window)
+        act_exit.setShortcut(QKeySequence("Ctrl+Q"))
+        act_exit.setText("Exit")
+        act_exit.triggered.connect(QApplication.instance().quit)
+        file_menu.addAction(act_exit)
         
         file_btn = QToolButton()
         file_btn.setText("File")
@@ -171,13 +214,32 @@ class ToolbarManager:
         file_btn.setPopupMode(QToolButton.InstantPopup)
         file_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(file_btn)
+        # Přidej také do nativního menubaru (macOS zobrazuje zkratky vpravo)
+        try:
+            self.main_window.menuBar().addMenu(file_menu)
+        except Exception:
+            pass
     
     def _add_export_menu(self, tb: QToolBar):
         """Přidá Export menu do toolbaru."""
         export_menu = QMenu("Image", self.main_window)
-        export_menu.addAction("Save as JPG", lambda: self.main_window.export_image("jpg"))
-        export_menu.addAction("Save as PNG", lambda: self.main_window.export_image("png"))
-        export_menu.addAction("Save as SVG", lambda: self.main_window.export_image("svg"))
+        act_jpg = QAction(self.main_window)
+        act_jpg.setShortcut(QKeySequence("Ctrl+Shift+J"))
+        act_jpg.setText("Save as JPG")
+        act_jpg.triggered.connect(lambda: self.main_window.export_image("jpg"))
+        export_menu.addAction(act_jpg)
+
+        act_png = QAction(self.main_window)
+        act_png.setShortcut(QKeySequence("Ctrl+Shift+N"))  # N as iNage/PNG to avoid conflicts
+        act_png.setText("Save as PNG")
+        act_png.triggered.connect(lambda: self.main_window.export_image("png"))
+        export_menu.addAction(act_png)
+
+        act_svg = QAction(self.main_window)
+        act_svg.setShortcut(QKeySequence("Ctrl+Shift+S"))
+        act_svg.setText("Save as SVG")
+        act_svg.triggered.connect(lambda: self.main_window.export_image("svg"))
+        export_menu.addAction(act_svg)
         
         export_btn = QToolButton()
         export_btn.setText("Image")
@@ -185,6 +247,42 @@ class ToolbarManager:
         export_btn.setPopupMode(QToolButton.InstantPopup)
         export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
         tb.addWidget(export_btn)
+        # Přidej také do nativního menubaru
+        try:
+            self.main_window.menuBar().addMenu(export_menu)
+        except Exception:
+            pass
+
+    def _add_view_menu(self, tb: QToolBar):
+        """Přidá View menu s přepínáním hierarchie a properties panelu."""
+        view_menu = QMenu("View", self.main_window)
+        
+        # Toggle akce pro dock panely
+        if hasattr(self.main_window, 'dock_hierarchy'):
+            act_h = self.main_window.dock_hierarchy.toggleViewAction()
+            act_h.setShortcut(QKeySequence("Ctrl+Shift+H"))
+            act_h.setText("Hierarchie procesů")
+            view_menu.addAction(act_h)
+            self.main_window.addAction(act_h)  # umožní fungování zkratky globálně
+        
+        if hasattr(self.main_window, 'dock_props'):
+            act_p = self.main_window.dock_props.toggleViewAction()
+            act_p.setShortcut(QKeySequence("Ctrl+Shift+P"))
+            act_p.setText("Properties")
+            view_menu.addAction(act_p)
+            self.main_window.addAction(act_p)
+        
+        view_btn = QToolButton()
+        view_btn.setText("View")
+        view_btn.setMenu(view_menu)
+        view_btn.setPopupMode(QToolButton.InstantPopup)
+        view_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        tb.addWidget(view_btn)
+        # Přidej také do nativního menubaru
+        try:
+            self.main_window.menuBar().addMenu(view_menu)
+        except Exception:
+            pass
     
     def _add_mode_actions(self, tb: QToolBar):
         """Přidá akce pro přepínání módů."""
