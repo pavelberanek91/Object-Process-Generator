@@ -182,12 +182,20 @@ def build_from_opl(app, text: str):
             label: Volitelný popisek vazby
         
         Returns:
-            LinkItem
+            LinkItem nebo None (pokud vazba není povolena)
         """
         # Hledá existující vazbu se stejným zdrojem, cílem a typem
         for it in scene.items():
             if isinstance(it, LinkItem) and it.src is src and it.dst is dst and it.link_type == lt:
                 return it
+        
+        # Zkontroluj, zda je vazba povolena
+        ok, msg = app.allowed_link(src, dst, lt)
+        if not ok:
+            # Vazba není povolena, ignorujeme ji
+            ignored.append(f"Vazba ignorována: {msg}")
+            return None
+        
         # Vytvoří novou vazbu
         ln = LinkItem(src, dst, lt, label)
         scene.addItem(ln)

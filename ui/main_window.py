@@ -874,7 +874,23 @@ class MainWindow(QMainWindow):
     
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
         """Kontroluje, zda je link povolen."""
-        # TODO: validace zatím vypnutá kvůli AI generování
+        # Kontrola pro strukturální vztahy
+        if link_type in STRUCTURAL_TYPES:
+            # Strukturální vztahy mohou být pouze mezi stejnými typy uzlů
+            src_is_process = isinstance(src_item, ProcessItem)
+            src_is_object = isinstance(src_item, ObjectItem)
+            dst_is_process = isinstance(dst_item, ProcessItem)
+            dst_is_object = isinstance(dst_item, ObjectItem)
+            
+            # Povoleno pouze proces→proces nebo objekt→objekt
+            if src_is_process and dst_is_process:
+                return True, ""
+            elif src_is_object and dst_is_object:
+                return True, ""
+            else:
+                return False, f"Strukturální vztah '{link_type}' může být pouze mezi stejnými typy uzlů (proces-proces nebo objekt-objekt)."
+        
+        # Procedurální vazby - zatím bez omezení
         return True, ""
 
     def handle_link_click(self, pos: QPointF):
@@ -1026,6 +1042,25 @@ class MainWindow(QMainWindow):
                 and self.mode == Mode.ADD_LINK 
                 and self.pending_link_src is not None):
             self.cancel_link_creation()
+            event.accept()
+            return
+        
+        # Rychlé přepínání módu
+        if event.key() == Qt.Key_P:
+            # P = Přidat proces
+            self.set_mode(Mode.ADD_PROCESS)
+            event.accept()
+            return
+        
+        if event.key() == Qt.Key_O:
+            # O = Přidat objekt
+            self.set_mode(Mode.ADD_OBJECT)
+            event.accept()
+            return
+        
+        if event.key() == Qt.Key_L:
+            # L = Přidat link
+            self.set_mode(Mode.ADD_LINK)
             event.accept()
             return
         

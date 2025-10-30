@@ -198,7 +198,7 @@ class ToolbarManager:
         act_obj = self._add_icon_btn(
             tb,
             icon_shape("object"),
-            "Add Object",
+            "Add Object (O)",
             lambda: self.main_window.set_mode(Mode.ADD_OBJECT),
             checkable=True
         )
@@ -207,7 +207,7 @@ class ToolbarManager:
         act_proc = self._add_icon_btn(
             tb,
             icon_shape("process"),
-            "Add Process",
+            "Add Process (P)",
             lambda: self.main_window.set_mode(Mode.ADD_PROCESS),
             checkable=True
         )
@@ -225,7 +225,7 @@ class ToolbarManager:
         act_link = self._add_icon_btn(
             tb,
             icon_shape("link"),
-            "Add Link",
+            "Add Link (L)",
             lambda: self.main_window.set_mode(Mode.ADD_LINK),
             checkable=True
         )
