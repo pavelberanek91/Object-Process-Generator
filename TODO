@@ -1,25 +1,16 @@
+[ ] Export zoomingu
+[ ] Import zoomingu
+[ ] Kardinality se musi ukazovat v OPL
+[ ] Negace
+[ ] Enabling linky
+[ ] Ortogonality strukturalnich vztahu
+[ ] Tagged structural links
+---
 [ ] Vyresit vsechny typy vztahu
-[x] "A can be as as1" ma byt "A is as1" (jedna se jen u jednoho stavu)
-[x] "agent funguje"
-[x] 'agent stavovy do procesu' -≥ "A in as1 handles B." opravit na "A at state as1 handles B."
-[x] "instrument funguje"
-[x] 'instrument stavovy do procesu' -≥ "B requires A in as1." opravit na "B requires A at state as1."
-[x] "effect funguje"
-[x] "consumption"
-[x] 'consumption stavovy do procesu'  -≥ "B consumes A in as1." opravit na "B consumes A at state as1."
-[x] "result"
-[x] "result stavovy" -≥ ta sama oprava na at state
-[x] "input a output link pair" -≥ "ted to mam takes input a yields", musi byt input i output a pak bude hlaska "B changes A from as1 to as2"
 [ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
-[x] "nefunguje mi exhibiton mezi proces a objekt, asi to bude krizovej problem vsude. povolit"
 [ ] "exhibition-characterization stavovy"
 ---
-[x] Vytvorit postranni listu s vlastnostmi
----
 [ ] OPL ma mit bold pro nazvy objektu a procesu a stavu
----
-[x] veci jsou interni a externi
-[x] veci jsou fyzicke a informacni
 ---
 [x] Posunout znacky linku doprostred cary
 [ ] Nahradit znacky spravymi

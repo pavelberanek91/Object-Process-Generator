@@ -107,12 +107,18 @@ def build_from_opl(app, text: str):
     by_label: Dict[str, object] = {}
     # Mapování label → kind ("object"/"process") pro rozlišení typu
     kind_of: Dict[str, str] = {}
+    # Mapování label → essence ("physical"/"informatical")
+    essence_of: Dict[str, str] = {}
+    # Mapování label → affiliation ("systemic"/"environmental")
+    affiliation_of: Dict[str, str] = {}
     
     # Projde existující uzly ve scéně a uloží je do cache
     for it in scene.items():
         if isinstance(it, (ObjectItem, ProcessItem)):
             by_label[it.label] = it
             kind_of[it.label] = it.kind
+            essence_of[it.label] = getattr(it, 'essence', 'physical')
+            affiliation_of[it.label] = getattr(it, 'affiliation', 'systemic')
 
     # === Určení pozice pro nové prvky ===
     # Nové prvky se umístí vpravo od existujícího diagramu
@@ -145,8 +151,10 @@ def build_from_opl(app, text: str):
         # Pokud existuje jako objekt, vrátí objekt (nechceme duplikáty)
         if it and isinstance(it, ObjectItem):
             return it
-        # Vytvoří nový proces
-        item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name)
+        # Vytvoří nový proces s atributy z definice (pokud existují)
+        essence = essence_of.get(name, "physical")
+        affiliation = affiliation_of.get(name, "systemic")
+        item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
         item.setPos(next_proc_pos())
         scene.addItem(item)
         by_label[name] = item
@@ -163,8 +171,10 @@ def build_from_opl(app, text: str):
         # Pokud existuje jako proces, vrátí proces (nechceme duplikáty)
         if it and isinstance(it, ProcessItem):
             return it
-        # Vytvoří nový objekt
-        item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name)
+        # Vytvoří nový objekt s atributy z definice (pokud existují)
+        essence = essence_of.get(name, "physical")
+        affiliation = affiliation_of.get(name, "systemic")
+        item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
         item.setPos(next_obj_pos())
         scene.addItem(item)
         by_label[name] = item
@@ -204,10 +214,55 @@ def build_from_opl(app, text: str):
     # Seznam nerozpoznaných řádků (pro informaci uživateli)
     ignored: List[str] = []
 
-    # === Parsování OPL vět řádek po řádku ===
+    # === PRVNÍ PRŮCHOD: Zpracování definic objektů a procesů ===
+    # Definice musí být zpracovány jako první, aby byly atributy k dispozici
+    # při vytváření uzlů v druhém průchodu
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        
+        # Zpracování definic s essence a affiliation
+        # Příklad: "A is a informatical and systemic object."
+        m = RE_DEFINITION.match(line)
+        if m:
+            name = _norm(m.group("name"))
+            essence = m.group("essence").lower()
+            affiliation = m.group("affiliation").lower()
+            kind = m.group("kind").lower()
+            
+            # Uložíme atributy pro použití při vytváření uzlu
+            essence_of[name] = essence
+            affiliation_of[name] = affiliation
+            kind_of[name] = kind
+            
+            # Pokud uzel už existuje, aktualizujeme jeho atributy
+            it = by_label.get(name)
+            if it and isinstance(it, (ObjectItem, ProcessItem)):
+                it.essence = essence
+                it.affiliation = affiliation
+                it.update()
+            else:
+                # Vytvoříme nový uzel přímo
+                if kind == "object":
+                    item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
+                    item.setPos(next_obj_pos())
+                    scene.addItem(item)
+                    by_label[name] = item
+                elif kind == "process":
+                    item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
+                    item.setPos(next_proc_pos())
+                    scene.addItem(item)
+                    by_label[name] = item
+
+    # === DRUHÝ PRŮCHOD: Parsování ostatních OPL vět řádek po řádku ===
     for raw in text.splitlines():
         line = raw.strip()
         if not line:  # Prázdné řádky přeskočíme
+            continue
+        
+        # Přeskočíme definice (už byly zpracovány v prvním průchodu)
+        if RE_DEFINITION.match(line):
             continue
 
         # === Consumption - proces spotřebovává objekt (nebo objekt ve stavu) ===
