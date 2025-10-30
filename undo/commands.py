@@ -5,13 +5,14 @@ je implementována jako QUndoCommand, který umožňuje vrácení zpět (undo)
 a opakování (redo) akce.
 """
 from __future__ import annotations
-from typing import List, Optional
+from typing import List, Optional, Dict
 from PySide6.QtWidgets import QGraphicsScene
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QUndoCommand
 
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
 from graphics.link import LinkItem
+from utils.ids import next_id
 
 
 class AddNodeCommand(QUndoCommand):
@@ -404,3 +405,160 @@ class ResizeItemCommand(QUndoCommand):
                         parent_process_id = getattr(view, 'zoomed_process_id', None)
                         break
                 main_win.sync_scene_to_global_model(scene, parent_process_id)
+
+
+# ---------- Paste items ----------
+class PasteItemsCommand(QUndoCommand):
+    """
+    Příkaz pro vložení zkopírovaných prvků (paste).
+    
+    Vytvoří nové kopie uzlů a linků s novými ID a posune je o offset.
+    """
+    def __init__(self, scene: QGraphicsScene, clipboard_data: Dict, offset: QPointF = QPointF(30, 30)):
+        super().__init__("Paste")
+        self.scene = scene
+        self.clipboard_data = clipboard_data
+        self.offset = offset
+        self.pasted_items = []  # Seznam vložených prvků (pro undo)
+        self.pasted_links = []  # Seznam vložených linků (pro undo)
+        self.id_mapping = {}  # Mapování starých ID na nové ID
+        
+    def redo(self):
+        """Vloží zkopírované prvky do scény."""
+        if self.pasted_items:
+            # Už jednou vloženo, jen přidáme zpět do scény
+            for item in self.pasted_items:
+                if not item.scene():
+                    self.scene.addItem(item)
+            for link in self.pasted_links:
+                if not link.scene():
+                    self.scene.addItem(link)
+        else:
+            # První vložení - vytvoříme nové kopie
+            self._create_copies()
+        
+        self._sync_to_global_model()
+    
+    def undo(self):
+        """Odstraní vložené prvky ze scény."""
+        # Nejdřív odstraníme linky
+        for link in self.pasted_links:
+            if link.scene():
+                link.remove_refs()
+                self.scene.removeItem(link)
+        
+        # Pak odstraníme uzly
+        for item in self.pasted_items:
+            if item.scene():
+                # Odstraníme vazby uzlu
+                for ln in list(getattr(item, "_links", []) or []):
+                    ln.remove_refs()
+                    if ln.scene():
+                        self.scene.removeItem(ln)
+                self.scene.removeItem(item)
+        
+        self._sync_to_global_model()
+    
+    def _create_copies(self):
+        """Vytvoří nové kopie prvků ze schránky."""
+        # Mapování starých ID na nové prvky
+        items_by_old_id = {}
+        
+        # Nejdřív vytvoříme kopie uzlů (bez stavů)
+        for node_data in self.clipboard_data.get("nodes", []):
+            if node_data["kind"] == "state":
+                continue  # Stavy zpracujeme později
+                
+            new_item = self._create_node_copy(node_data, items_by_old_id)
+            if new_item:
+                self.pasted_items.append(new_item)
+                items_by_old_id[node_data["id"]] = new_item
+                self.id_mapping[node_data["id"]] = new_item.node_id
+                self.scene.addItem(new_item)
+        
+        # Pak vytvoříme kopie linků (pouze těch, které spojují vložené uzly)
+        for link_data in self.clipboard_data.get("links", []):
+            src_id = link_data["src"]
+            dst_id = link_data["dst"]
+            
+            # Link pouze pokud oba uzly byly vloženy
+            if src_id in items_by_old_id and dst_id in items_by_old_id:
+                src_item = items_by_old_id[src_id]
+                dst_item = items_by_old_id[dst_id]
+                new_link = LinkItem(src_item, dst_item, link_data["link_type"], link_data.get("label", ""))
+                
+                # Zkopírujeme další vlastnosti
+                if "card_src" in link_data:
+                    new_link.card_src = link_data["card_src"]
+                if "card_dst" in link_data:
+                    new_link.card_dst = link_data["card_dst"]
+                
+                self.pasted_links.append(new_link)
+                self.scene.addItem(new_link)
+    
+    def _create_node_copy(self, node_data: Dict, items_by_old_id: Dict):
+        """Vytvoří kopii uzlu podle dat."""
+        kind = node_data["kind"]
+        
+        if kind == "state":
+            # Stavy přeskočíme - budou vytvořeny jako potomci objektů
+            return None
+        
+        # Vypočítáme novou pozici s offsetem
+        new_x = node_data["x"] + self.offset.x()
+        new_y = node_data["y"] + self.offset.y()
+        new_w = node_data["w"]
+        new_h = node_data["h"]
+        
+        # Vytvoříme nový prvek
+        new_item = None
+        if kind == "object":
+            rect = QRectF(-new_w/2, -new_h/2, new_w, new_h)
+            new_item = ObjectItem(
+                rect, 
+                node_data["label"],
+                node_data.get("essence", "physical"),
+                node_data.get("affiliation", "systemic")
+            )
+            new_item.setPos(new_x, new_y)
+            
+            # Zkopírujeme parent_process_id pokud existuje
+            if "parent_process_id" in node_data:
+                new_item.parent_process_id = node_data["parent_process_id"]
+            
+            # Vytvoříme kopie stavů
+            for state_data in self.clipboard_data.get("nodes", []):
+                if state_data["kind"] == "state" and state_data.get("parent_id") == node_data["id"]:
+                    state_rect = QRectF(state_data["x"], state_data["y"], state_data["w"], state_data["h"])
+                    state = StateItem(new_item, state_rect, state_data["label"])
+                    self.id_mapping[state_data["id"]] = state.node_id
+                    items_by_old_id[state_data["id"]] = state
+        
+        elif kind == "process":
+            rect = QRectF(-new_w/2, -new_h/2, new_w, new_h)
+            new_item = ProcessItem(
+                rect,
+                node_data["label"],
+                node_data.get("essence", "physical"),
+                node_data.get("affiliation", "systemic")
+            )
+            new_item.setPos(new_x, new_y)
+            
+            # Zkopírujeme parent_process_id pokud existuje
+            if "parent_process_id" in node_data:
+                new_item.parent_process_id = node_data["parent_process_id"]
+        
+        return new_item
+    
+    def _sync_to_global_model(self):
+        """Synchronizuje změnu do globálního modelu."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if main_win and hasattr(main_win, 'sync_scene_to_global_model'):
+            parent_process_id = None
+            for i in range(main_win.tabs.count()):
+                view = main_win.tabs.widget(i)
+                if view.scene() == self.scene:
+                    parent_process_id = getattr(view, 'zoomed_process_id', None)
+                    break
+            main_win.sync_scene_to_global_model(self.scene, parent_process_id)

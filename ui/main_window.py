@@ -31,7 +31,7 @@ from ui.toolbar import ToolbarManager
 from ui.properties_panel import PropertiesPanel
 from ui.dialogs import show_opl_import_dialog, show_nl_to_opl_dialog, show_opl_preview_dialog
 from persistence.json_io import safe_base_filename
-from undo.commands import DeleteItemsCommand, ClearAllCommand, AddStateCommand, AddNodeCommand
+from undo.commands import DeleteItemsCommand, ClearAllCommand, AddStateCommand, AddNodeCommand, PasteItemsCommand
 
 
 class MainWindow(QMainWindow):
@@ -58,6 +58,9 @@ class MainWindow(QMainWindow):
         
         # Undo stack
         self.undo_stack = QUndoStack(self)
+        
+        # Clipboard pro copy-paste
+        self.clipboard = None
         
         # Globální datový model pro všechny canvasy
         self._global_diagram_data = {
@@ -103,6 +106,24 @@ class MainWindow(QMainWindow):
         select_all_action.setShortcut(QKeySequence.SelectAll)
         select_all_action.triggered.connect(self.select_all)
         self.addAction(select_all_action)
+        
+        # Copy (Ctrl+C)
+        copy_action = QAction("Kopírovat", self)
+        copy_action.setShortcut(QKeySequence.Copy)
+        copy_action.triggered.connect(self.copy_selection)
+        self.addAction(copy_action)
+        
+        # Paste (Ctrl+V)
+        paste_action = QAction("Vložit", self)
+        paste_action.setShortcut(QKeySequence.Paste)
+        paste_action.triggered.connect(self.paste_selection)
+        self.addAction(paste_action)
+        
+        # Duplicate (Ctrl+D)
+        duplicate_action = QAction("Duplikovat", self)
+        duplicate_action.setShortcut(QKeySequence("Ctrl+D"))
+        duplicate_action.triggered.connect(self.duplicate_selection)
+        self.addAction(duplicate_action)
     
     def _init_toolbars(self):
         """Inicializuje toolbary."""
@@ -155,6 +176,123 @@ class MainWindow(QMainWindow):
                 item.setSelected(True)
         
         self.statusBar().showMessage(f"Označeno {len(self.scene.selectedItems())} prvků", 2000)
+    
+    def copy_selection(self):
+        """Zkopíruje vybrané prvky do schránky."""
+        if not hasattr(self, 'scene') or self.scene is None:
+            return
+        
+        selected = self.scene.selectedItems()
+        if not selected:
+            self.statusBar().showMessage("Nic nevybráno ke kopírování", 2000)
+            return
+        
+        # Sebereme vybrané uzly (ObjectItem, ProcessItem, StateItem)
+        nodes = []
+        links = []
+        selected_node_ids = set()
+        
+        # Nejdřív sebereme všechny vybrané uzly
+        for item in selected:
+            if isinstance(item, (ObjectItem, ProcessItem)):
+                node_data = self._serialize_node(item)
+                nodes.append(node_data)
+                selected_node_ids.add(item.node_id)
+                
+                # Pokud je objekt vybraný, zkopírujeme i jeho stavy
+                if isinstance(item, ObjectItem):
+                    for child in item.childItems():
+                        if isinstance(child, StateItem):
+                            state_data = self._serialize_state(child, item.node_id)
+                            nodes.append(state_data)
+                            selected_node_ids.add(child.node_id)
+        
+        # Sebereme linky mezi vybranými uzly
+        for item in selected:
+            if isinstance(item, LinkItem):
+                # Kontrola, zda link spojuje vybrané uzly
+                src_id = getattr(item.src, 'node_id', None)
+                dst_id = getattr(item.dst, 'node_id', None)
+                
+                if src_id in selected_node_ids and dst_id in selected_node_ids:
+                    link_data = self._serialize_link(item)
+                    links.append(link_data)
+        
+        # Uložíme do schránky
+        self.clipboard = {
+            "nodes": nodes,
+            "links": links
+        }
+        
+        self.statusBar().showMessage(f"Zkopírováno {len(nodes)} prvků a {len(links)} vazeb", 2000)
+    
+    def paste_selection(self):
+        """Vloží prvky ze schránky."""
+        if not hasattr(self, 'scene') or self.scene is None:
+            return
+        
+        if not self.clipboard or not self.clipboard.get("nodes"):
+            self.statusBar().showMessage("Schránka je prázdná", 2000)
+            return
+        
+        # Vytvoříme příkaz pro vložení
+        cmd = PasteItemsCommand(self.scene, self.clipboard, QPointF(30, 30))
+        self.push_cmd(cmd)
+        
+        # Označíme vložené prvky
+        self.scene.clearSelection()
+        for item in cmd.pasted_items:
+            item.setSelected(True)
+        
+        self.statusBar().showMessage(f"Vloženo {len(cmd.pasted_items)} prvků", 2000)
+    
+    def duplicate_selection(self):
+        """Duplikuje vybrané prvky (copy + paste v jednom kroku)."""
+        self.copy_selection()
+        self.paste_selection()
+    
+    def _serialize_node(self, item):
+        """Serializuje uzel do slovníku."""
+        pos = item.pos()
+        rect = item.rect()
+        return {
+            "id": item.node_id,
+            "kind": item.kind,
+            "label": item.label,
+            "x": pos.x(),
+            "y": pos.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "essence": getattr(item, 'essence', 'physical'),
+            "affiliation": getattr(item, 'affiliation', 'systemic'),
+            "parent_process_id": getattr(item, 'parent_process_id', None)
+        }
+    
+    def _serialize_state(self, state, parent_id):
+        """Serializuje stav do slovníku."""
+        rect = state.rect()
+        return {
+            "id": state.node_id,
+            "kind": "state",
+            "label": state.label,
+            "x": rect.x(),
+            "y": rect.y(),
+            "w": rect.width(),
+            "h": rect.height(),
+            "parent_id": parent_id
+        }
+    
+    def _serialize_link(self, link):
+        """Serializuje link do slovníku."""
+        return {
+            "id": getattr(link, 'link_id', 'link_' + str(id(link))),
+            "src": getattr(link.src, 'node_id', ''),
+            "dst": getattr(link.dst, 'node_id', ''),
+            "link_type": link.link_type,
+            "label": link.label,
+            "card_src": getattr(link, 'card_src', ''),
+            "card_dst": getattr(link, 'card_dst', '')
+        }
     
     # ========== Global data model synchronization ==========
     

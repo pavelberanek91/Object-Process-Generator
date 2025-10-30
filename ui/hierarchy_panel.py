@@ -38,6 +38,23 @@ class ProcessHierarchyPanel(QDockWidget):
         self.tree.setHeaderLabel("Procesy")
         self.tree.setAlternatingRowColors(True)
         self.tree.itemClicked.connect(self._on_item_clicked)
+        
+        # Nastavení světlého pozadí napevno (i pro macOS dark mode)
+        self.tree.setStyleSheet("""
+            QTreeWidget {
+                background-color: white;
+                color: black;
+                alternate-background-color: #f0f0f0;
+            }
+            QTreeWidget::item:selected {
+                background-color: #0078d7;
+                color: white;
+            }
+            QTreeWidget::item:hover {
+                background-color: #e5f3ff;
+            }
+        """)
+        
         layout.addWidget(self.tree)
         
         self.setWidget(container)
