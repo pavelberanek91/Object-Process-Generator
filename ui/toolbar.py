@@ -252,7 +252,7 @@ class ToolbarManager:
         self.main_window.cmb_default_link_type.currentTextChanged.connect(
             lambda text: setattr(self.main_window, "default_link_type", text) if "───" not in text else None
         )
-        tb.addWidget(QLabel("Default Link:"))
+        tb.addWidget(QLabel("Link type:"))
         tb.addWidget(self.main_window.cmb_default_link_type)
         
         # Group pro exkluzivní výběr

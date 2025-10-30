@@ -126,7 +126,11 @@ def preview_opl(scene) -> str:
                     proc_state_links[s][obj_label]["out"] = d_label
             
         elif s_kind in ("object","process") and d_kind in ("object","process"):
-            struct_b[lt][ent(s)].append(ent(d))
+            # Všechny strukturální vazby: marker ikony je vždy tam, kde začíná vazba (src)
+            # Ale v OPL sémantice marker má být u specifického uzlu (celek, rodič, třída)
+            # Uživatel při kreslení klikne od "běžného" uzlu k "významnému" uzlu (s markerem)
+            # Proto musíme prohodit src↔dst pro všechny strukturální vazby
+            struct_b[lt][ent(d)].append(ent(s))
 
     # seznam vygenerovanych OPL vet
     lines: List[str] = []
