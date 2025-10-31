@@ -149,7 +149,7 @@ class ToolbarManager:
         act_export.setShortcut(QKeySequence("Ctrl+S"))
         act_export.setText("Export OPD")
         act_export.triggered.connect(
-            lambda: save_scene_as_json(self.main_window.scene, self.main_window._current_tab_title())
+            lambda: save_scene_as_json(self.main_window.scene, self.main_window._current_tab_title(), self.main_window)
         )
         file_menu.addAction(act_export)
 
@@ -162,7 +162,8 @@ class ToolbarManager:
                 self.main_window.scene,
                 self.main_window.allowed_link,
                 new_canvas_callback=self.main_window._new_canvas,
-                new_tab=False
+                new_tab=False,
+                main_window=self.main_window
             )
         )
         file_menu.addAction(act_import)

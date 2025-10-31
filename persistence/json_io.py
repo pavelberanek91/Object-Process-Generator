@@ -180,32 +180,73 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
                             f"{invalid} neplatných vazeb bylo při načítání přeskočeno.")
         
         
-def save_scene_as_json(scene, title: str | None = None):
+def save_scene_as_json(scene, title: str | None = None, main_window=None):
     """
-    Uloží scénu do JSON souboru (s dialogem pro výběr cesty).
+    Uloží diagram do JSON souboru (s dialogem pro výběr cesty).
+    
+    Pokud je poskytnut main_window, uloží celý globální datový model včetně
+    všech zoom-in hierarchií. Jinak uloží pouze aktuální scénu.
     
     Args:
-        scene: Scéna k uložení
+        scene: Scéna k uložení (použije se pro zpětnou kompatibilitu)
         title: Název tabu (použije se jako výchozí název souboru)
+        main_window: MainWindow instance pro přístup k _global_diagram_data
     """
     base = safe_base_filename(title)
     path, _ = QFileDialog.getSaveFileName(None, "Save OPD (JSON)", f"{base}.json", "JSON (*.json)")
     if not path: 
         return
+    
+    # Pokud máme main_window, uložíme celý globální model (včetně hierarchií)
+    if main_window and hasattr(main_window, '_global_diagram_data'):
+        # Nejdřív synchronizujme aktuální scénu do globálního modelu
+        current_view = None
+        parent_process_id = None
+        for i in range(main_window.tabs.count()):
+            view = main_window.tabs.widget(i)
+            if view.scene() == scene:
+                current_view = view
+                parent_process_id = getattr(view, 'zoomed_process_id', None)
+                break
+        
+        if current_view:
+            main_window.sync_scene_to_global_model(scene, parent_process_id)
+        
+        # Uložme celý globální datový model
+        data_to_save = {
+            "nodes": main_window._global_diagram_data.get("nodes", []),
+            "links": main_window._global_diagram_data.get("links", []),
+            "meta": {
+                **main_window._global_diagram_data.get("meta", {}),
+                "format": "opm-mvp-json-hierarchy",
+                "version": 2  # Verze 2 podporuje hierarchie
+            }
+        }
+    else:
+        # Zpětná kompatibilita - uložíme jen aktuální scénu
+        data_to_save = scene_to_dict(scene)
+        data_to_save["meta"] = data_to_save.get("meta", {})
+        data_to_save["meta"]["format"] = "opm-mvp-json"
+        data_to_save["meta"]["version"] = 1
+    
     # Uložení do souboru s UTF-8 encoding a odsazením pro čitelnost
     with open(path, "w", encoding="utf-8") as f: 
-        json.dump(scene_to_dict(scene), f, ensure_ascii=False, indent=2)
+        json.dump(data_to_save, f, ensure_ascii=False, indent=2)
 
 
-def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab: bool = False):
+def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab: bool = False, main_window=None):
     """
-    Načte scénu z JSON souboru (s dialogem pro výběr souboru).
+    Načte diagram z JSON souboru (s dialogem pro výběr souboru).
+    
+    Pokud soubor obsahuje hierarchii (verze 2), načte všechny canvasy včetně zoom-in hierarchií.
+    Jinak načte pouze aktuální scénu (zpětná kompatibilita).
     
     Args:
-        scene: Aktuální scéna (použije se pokud new_tab=False)
+        scene: Aktuální scéna (použije se pokud new_tab=False a není hierarchie)
         allowed_link: Callback pro validaci vazeb
         new_canvas_callback: Funkce pro vytvoření nového tabu
         new_tab: Pokud True, načte do nového tabu; jinak do aktuální scény
+        main_window: MainWindow instance pro načtení hierarchií (pokud None, jen aktuální scéna)
     """
     caption = "Import OPD"
     path, _ = QFileDialog.getOpenFileName(None, caption, "", "JSON (*.json)")
@@ -216,13 +257,141 @@ def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab:
     with open(path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    # Určení cílové scény
-    target_scene = scene
-    if new_tab and new_canvas_callback:
-        # Vytvoří nový tab s názvem podle souboru
-        base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
-        view = new_canvas_callback(base)
-        target_scene = view.scene()
+    # Zkontroluj verzi/formát
+    meta = data.get("meta", {})
+    format_version = meta.get("version", 1)
+    format_type = meta.get("format", "opm-mvp-json")
+    
+    # Pokud je to hierarchie (verze 2) a máme main_window, načteme celou hierarchii
+    if format_version >= 2 and "hierarchy" in format_type and main_window:
+        _load_hierarchy_from_json(main_window, data, allowed_link)
+    else:
+        # Zpětná kompatibilita - načteme jen aktuální scénu
+        target_scene = scene
+        if new_tab and new_canvas_callback:
+            # Vytvoří nový tab s názvem podle souboru
+            base = os.path.splitext(os.path.basename(path))[0] or "Canvas"
+            view = new_canvas_callback(base)
+            target_scene = view.scene()
 
-    # Načtení dat do scény
-    dict_to_scene(target_scene, data, allowed_link)
+        # Načtení dat do scény
+        dict_to_scene(target_scene, data, allowed_link)
+
+
+def _load_hierarchy_from_json(main_window, data: Dict[str, Any], allowed_link):
+    """
+    Načte hierarchii diagramu včetně všech zoom-in canvasů.
+    
+    Args:
+        main_window: MainWindow instance
+        data: Načtená data z JSON
+        allowed_link: Callback pro validaci vazeb
+    """
+    # Nejdřív vymažeme všechny existující taby (kromě root)
+    # nebo vytvoříme nový root canvas
+    nodes = data.get("nodes", [])
+    links = data.get("links", [])
+    
+    # Vytvoříme procesní mapu (process_id -> process_data)
+    process_map = {n["id"]: n for n in nodes if n.get("kind") == "process"}
+    
+    # Najdeme procesy, které mají podprocesy/objekty (ty potřebují in-zoom canvas)
+    processes_with_children = set()
+    for node in nodes:
+        parent_id = node.get("parent_process_id")
+        if parent_id and parent_id in process_map:
+            processes_with_children.add(parent_id)
+    
+    # Uložíme data do globálního modelu
+    main_window._global_diagram_data = {
+        "nodes": nodes,
+        "links": links,
+        "meta": data.get("meta", {})
+    }
+    
+    # Vytvoříme root canvas a načteme do něj prvky s parent_process_id == None
+    # Nejdřív smažeme všechny existující taby
+    while main_window.tabs.count() > 0:
+        main_window.tabs.removeTab(0)
+    
+    # Vytvoříme root canvas
+    root_name = "🏠 Root Canvas"
+    if hasattr(main_window, '_root_canvas_name'):
+        root_name = main_window._root_canvas_name
+    root_view = main_window._new_canvas(root_name)
+    root_scene = root_view.scene()
+    
+    # Ujistíme se, že root_canvas_name je nastaveno
+    if hasattr(main_window, '_root_canvas_name'):
+        main_window._root_canvas_name = root_name
+    
+    # Načteme root prvky (parent_process_id == None)
+    root_data = {
+        "nodes": [n for n in nodes if n.get("parent_process_id") is None],
+        "links": [],  # Linky se načtou podle uzlů
+        "meta": data.get("meta", {})
+    }
+    
+    # Načteme linky, které spojují root uzly
+    root_node_ids = {n["id"] for n in root_data["nodes"]}
+    root_data["links"] = [
+        l for l in links
+        if l.get("src") in root_node_ids and l.get("dst") in root_node_ids
+    ]
+    
+    dict_to_scene(root_scene, root_data, allowed_link)
+    
+    # Pro každý proces s podprocesy vytvoříme in-zoom canvas
+    # Musíme to dělat rekurzivně, ale nejdřív vytvoříme všechny procesy v root scéně
+    # Pak projdeme hierarchii a vytvoříme in-zoom canvasy
+    
+    def create_in_zoom_canvases(parent_process_id: str | None, parent_view):
+        """Rekurzivně vytvoří in-zoom canvasy pro všechny procesy s dětmi."""
+        # Najdi procesy, které patří do tohoto parent_process_id
+        child_processes = [
+            p for p in process_map.values()
+            if p.get("parent_process_id") == parent_process_id
+        ]
+        
+        for process in child_processes:
+            process_id = process["id"]
+            
+            # Pokud má tento proces děti, vytvoř pro něj in-zoom canvas
+            if process_id in processes_with_children:
+                # Vytvoř in-zoom canvas
+                tab_title = f"🔍 {process.get('label', 'Process')}"
+                zoom_view = main_window._new_canvas(
+                    title=tab_title,
+                    parent_view=parent_view,
+                    zoomed_process_id=process_id
+                )
+                zoom_scene = zoom_view.scene()
+                
+                # Načti prvky pro tento proces
+                process_data = {
+                    "nodes": [n for n in nodes if n.get("parent_process_id") == process_id],
+                    "links": [],
+                    "meta": data.get("meta", {})
+                }
+                
+                # Načti linky pro tento proces
+                process_node_ids = {n["id"] for n in process_data["nodes"]}
+                process_data["links"] = [
+                    l for l in links
+                    if l.get("src") in process_node_ids and l.get("dst") in process_node_ids
+                ]
+                
+                dict_to_scene(zoom_scene, process_data, allowed_link)
+                
+                # Rekurzivně vytvoř canvasy pro podprocesy
+                create_in_zoom_canvases(process_id, zoom_view)
+    
+    # Začněme s root procesy
+    create_in_zoom_canvases(None, root_view)
+    
+    # Přepneme na root canvas
+    main_window.tabs.setCurrentIndex(0)
+    
+    # Refresh hierarchie
+    if hasattr(main_window, 'refresh_hierarchy_panel'):
+        main_window.refresh_hierarchy_panel()
