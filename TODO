@@ -5,6 +5,7 @@
 [ ] Enabling linky
 [ ] Ortogonality strukturalnich vztahu
 [ ] Tagged structural links
+[ ] Při přidání stavu by se měl automaticky objekt rozšířit svou velikostí a stavy se tam seřadit.
 ---
 [ ] Vyresit vsechny typy vztahu
 [ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
@@ -28,3 +29,204 @@
 [x] pridat zooming
 [ ] vytvorit simulacni model pomoci asi Petriho siti
 ---
+
+# Test deklarace objektů s atributy a indiferentnosti vuci členu a/an
+[x] Car is an informatical and systemic object.
+[x] Car is an informatical and environmental object.
+[x] Car is an physical and systemic object.
+[x] Car is an physical and environmental object.
+[x] Car is a informatical and systemic object.
+[x] Car is a informatical and environmental object.
+[x] Car is a physical and systemic object.
+[x] Car is a physical and environmental object.
+
+# Test deklarace s implicitní hodnotou atributů. 
+[ ] Car is an informatical object.
+[ ] Car is an physical object.
+[ ] Car is an environmental object.
+[ ] Car is an systemic object.
+[ ] Car is a informatical object.
+[ ] Car is a physical object.
+[ ] Car is a environmental object.
+[ ] Car is a systemic object.
+
+# Test deklarace vs. generalizace. Teď to má vytvořit vztah generalizace-specializace.
+[ ] Car is an Informatical object.
+[ ] Car is an Physical object.
+[ ] Car is an Environmental object.
+[ ] Car is an Systemic object.
+[ ] Car is a Informatical object.
+[ ] Car is a Physical object.
+[ ] Car is a Environmental object.
+[ ] Car is a Systemic object.
+
+Car is an informatical and systemic object.
+- Car is a informatical and systemic object.
+
+Powertrain is an informatical and systemic object.
+- Powertrain is a informatical and systemic object.
+
+Body is an informatical and systemic object.
+- Body is a informatical and systemic object.
+
+Electrical System is an informatical and systemic object.
+- Electrical System is a informatical and systemic object.
+
+Interior is an informatical and systemic object.
+- Interior is a informatical and systemic object.
+
+Chassis is an informatical and systemic object.
+- Chassis is a informatical and systemic object.
+
+(x) Car consists of Body, Chassis, Electrical System, Interior, and Powertrain.
+- Braking System consists of Chassis.
+- Powertrain consists of Car.
+- Interior consists of Car.
+- Electrical System consists of Car.
+- Chassis consists of Car.
+- Body consists of Car.
+
+Braking System is an informatical and systemic object.
+- Braking System is a informatical and systemic object.
+
+Chassis consists of Braking System.
+
+Abs is an informatical and systemic object.
+- Abs is a informatical and systemic object.
+
+Abs is a Braking System.
+
+Velocity of Car is an informatical and systemic object.
+- Velocity of Car is a informatical and systemic object.
+
+Velocity of Car can be non-zero or zero.
+- Velocity of Car can be non-zero or zero.
+
+(x) Car exhibits Velocity of Car.
+- Velocity of Car exhibits Car.
+
+Driver is an informatical and systemic object.
+- Driver is a informatical and systemic object.
+
+Stopping is an informatical and systemic process.
+- Stopping is a informatical and systemic process.
+
+Stopping changes Velocity of Car from non-zero to zero.
+- Stopping changes Velocity of Car from non-zero to zero.
+
+Stopping requires Braking System and Driver.
+- Stopping requires Driver and Braking System.
+
+[x] Příklad funguje
+
+
+
+x Raw Metal Bar is physical.
+# Raw Metal Bar is physical and systemic object
+
+Raw Metal Bar is physical.
+Raw Metal Bar can be pre-cut or cut.
+Machine Operator is physical.
+Coolant is physical.
+Machining is physical.
+Machining requires Coolant.
+Machine Operator handles Machining.
+Part is physical.
+Part can be pre-tested or tested.
+Testing is environmental and physical.
+Cutting changes Raw Metal Bar from pre-cut to cut.
+Machining consumes Raw Metal Bar.
+Machining yields pre-tested Part.
+Testing changes Par from pre-tested to tested.
+
+Delivery Airline is a physical object.
+Delivery Drone is a physical object.
+Pilot is a physical object.
+Package is a physical object.
+Package can be delivered, on delivery or on store.
+Customer is a physical object.
+Store is a physical and environmental object.
+Delivery Airline consists of Delivery Drone and Pilot.
+Drone Delivering changes Package from on delivery to delivered.
+Pilot handles Drone Delivering.
+Drone Delivering requires Delivery Drone.
+Drone Delivering affects Customer.
+Delivery Preparing changes Package from on store to on delivery.
+Store handles Delivery Preparing.
+Customer handles Delivery Requesting.
+Delivery Requesting affects Store.
+
+Christopher is physical.
+Christopher knows OPM Theory.
+Christopher handles presenting.
+OPM consists of OPM Theory.
+presenting is physical.
+presenting consumes OPM Theory.
+presenting yields Presentation.
+
+Location of Passenger can be destination or origin. State origin is initial. State destination is final.
+Driver owns Car.
+Passenger exhibits Location.
+Ride-sharing Service Providing changes Location of Passenger from origin to destination.
+Driver handles Ride-sharing Service Providing.
+Ride-sharing Service Providing requires Car.
+
+x Food exhibits Spoilage Rate, which can be fast or slow.
+Spoilage Slowing changes Spoilage Rate of Food from fast to slow.
+Freezing, Dehydrating, and Canning are Spoilage Slowing.
+Canning, Dehydrating and Freezing are Spoilage Slowings.
+Freezing requires Freezer.
+Dehydrating requires Dehydrator.
+Canning requires Cannery.
+
+Material can be undivided or divided 
+Separating changes Material from undivided to divided.
+Operator-Scissors Complex exhibits Cutting 
+Operator-Scissors Complex consists of Scissors and Operator.
+Cutting is Separating.
+Cutting requires Scissors.
+Operator handles Cutting.
+
+Paper exhibits Position, which can be movable and fixed.
+Holding changes Position of Paper from movable to fixed.
+Holding maintains fixed Position of Paper.
+Weight Applying is Holding.
+Weight Applying requires Weight.
+Stone is a Weight.
+Person handles Weight Applying
+
+Tube exhibits Curvature with values Initial and Prescribed.
+Bending changes Curvature of Tube from Initial value to Prescribed value.
+Bending yields Distorting Force, which can be acceptable or unacceptable.
+Distortion Preventing changes Distorting Force from acceptable to unacceptable.
+
+Food exhibits Spoilage Rate, which can be fast, slow, or very slow.
+Chilling changes Spoilage Rate of Food from fast to slow.
+Freezing changes Spoilage Rate of Food from fast to very slow.
+
+Water exhibits Flow Rate, which can be maintained or changed and temperature, which can be maintained or changed.
+Flow Controlling changes Flow Rate of Water from maintained to changed.
+Temp Controlling changes Temperature Rae of Water from maintained to changed.
+
+Contents, Insulation, Door, Person, Hinge Location, and Door Position are physical objects.
+Insulating and Door Opening are physical processes.
+Insulating affects Energy Loss Rate.
+Insulating requires Insulation.
+Insulation exhibits Efficiency Rating.
+Door exhibits Door Position and Hinge Location
+Door Opening affects Contents and Energy Loss Rate.
+Door Opening changes Door Position from closed to open
+Door Opening requires Door.
+Person handles Door Opening.
+Efficiency Rating Selecting affects Efficiency Rating and Energy Loss Rate.
+Hinge Location Selecting affects Hinge Location and Energy Loss Rate.
+
+Freezer, Sensor/Compressor System, Sensor, Compressor, Circulation System, and Condenser are physical System objects.
+Temp Sensing, Air Cooling, Air Circulating, and Moisture Condensing are physical processes.
+Freezer consists of Sensor/ Compressor System, Circulation System, and Condenser.
+Sensor/Compressor System consists of Sensor and Compressor.
+Temp Sensing requires Sensor.
+Air Cooling requires Compressor.
+Air Circulating requires Circulation System.
+Moisture Condensing requires Condenser.
+

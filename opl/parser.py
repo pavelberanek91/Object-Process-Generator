@@ -339,12 +339,13 @@ def build_from_opl(app, text: str):
 
         # === Aggregation - objekt se skládá z částí ===
         # Příklad: "Car consists of Engine, Wheels and Body."
+        # Poznámka: Link vytváříme jako part → whole (protože generátor prohodí src↔dst pro strukturální vazby)
         m = RE_COMPOSED.match(line)
         if m:
             whole = get_or_create_object(m.group("whole"))
             # Může se skládat z více částí
             for part in _split_names(m.group("parts")):
-                ensure_link(whole, get_or_create_object(part), "aggregation")
+                ensure_link(get_or_create_object(part), whole, "aggregation")
             continue
 
         # === Characterization - objekt je charakterizován atributy ===
@@ -359,12 +360,13 @@ def build_from_opl(app, text: str):
 
         # === Exhibition - objekt vykazuje vlastnosti ===
         # Příklad: "Product exhibits Quality and Price."
+        # Poznámka: Link vytváříme jako attr → obj (protože generátor prohodí src↔dst pro strukturální vazby)
         m = RE_EXHIBITS.match(line)
         if m:
             obj = get_or_create_object(m.group("obj"))
             # Může vykazovat více vlastností
             for attr in _split_names(m.group("attrs")):
-                ensure_link(obj, get_or_create_object(attr), "exhibition")
+                ensure_link(get_or_create_object(attr), obj, "exhibition")
             continue
 
         # === Generalization - nadřazená třída generalizuje podtřídy ===
