@@ -117,7 +117,9 @@ def build_from_opl(app, text: str):
         if isinstance(it, (ObjectItem, ProcessItem)):
             by_label[it.label] = it
             kind_of[it.label] = it.kind
-            essence_of[it.label] = getattr(it, 'essence', 'physical')
+            # Pro objekty je výchozí essence "informatical", pro procesy "physical"
+            default_essence = 'informatical' if isinstance(it, ObjectItem) else 'physical'
+            essence_of[it.label] = getattr(it, 'essence', default_essence)
             affiliation_of[it.label] = getattr(it, 'affiliation', 'systemic')
 
     # === Určení pozice pro nové prvky ===
@@ -172,7 +174,7 @@ def build_from_opl(app, text: str):
         if it and isinstance(it, ProcessItem):
             return it
         # Vytvoří nový objekt s atributy z definice (pokud existují)
-        essence = essence_of.get(name, "physical")
+        essence = essence_of.get(name, "informatical")
         affiliation = affiliation_of.get(name, "systemic")
         item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
         item.setPos(next_obj_pos())
@@ -224,11 +226,17 @@ def build_from_opl(app, text: str):
         
         # Zpracování definic s essence a affiliation
         # Příklad: "A is a informatical and systemic object."
+        # Příklad: "A is a systemic and informatical object."
         m = RE_DEFINITION.match(line)
         if m:
             name = _norm(m.group("name"))
-            essence = m.group("essence").lower()
-            affiliation = m.group("affiliation").lower()
+            # Extraktujeme atributy - podporujeme obě pořadí
+            if m.group("essence1"):
+                essence = m.group("essence1").lower()
+                affiliation = m.group("affiliation1").lower()
+            else:
+                essence = m.group("essence2").lower()
+                affiliation = m.group("affiliation2").lower()
             kind = m.group("kind").lower()
             
             # Uložíme atributy pro použití při vytváření uzlu
@@ -254,6 +262,70 @@ def build_from_opl(app, text: str):
                     item.setPos(next_proc_pos())
                     scene.addItem(item)
                     by_label[name] = item
+            continue
+        
+        # Zpracování definic s jedním atributem
+        # Příklad: "Car is an informatical object." (affiliation=systemic implicitní)
+        # Příklad: "Car is a systemic object." (essence=informatical implicitní pro objekty)
+        m = RE_DEFINITION_SINGLE.match(line)
+        if m:
+            name = _norm(m.group("name"))
+            attr_raw = m.group("attr")  # Surový atribut (nechceme .lower() hned, potřebujeme zkontrolovat velikost písmen)
+            kind = m.group("kind").lower()
+            
+            # Kontrola: pokud atribut začíná velkým písmenem, jde o generalizaci, ne o definici atributu
+            # Toto je důležité pro rozlišení "Car is an Informatical object." (generalizace)
+            # od "Car is an informatical object." (definice atributu)
+            if attr_raw and attr_raw[0].isupper():
+                # Není to definice atributu, ale generalizace - přeskočíme to zde,
+                # bude zpracováno v druhém průchodu jako RE_IS_A
+                continue
+            
+            # Atribut je malými písmeny, takže jde o definici atributu
+            attr = attr_raw.lower()
+            
+            # Určíme, zda je to essence nebo affiliation
+            if attr in ("physical", "informatical"):
+                # Je to essence
+                essence = attr
+                # Implicitní affiliation
+                affiliation = "systemic"
+            elif attr in ("systemic", "environmental"):
+                # Je to affiliation
+                affiliation = attr
+                # Implicitní essence podle typu
+                if kind == "object":
+                    essence = "informatical"
+                else:  # process
+                    essence = "physical"
+            else:
+                # Neznámý atribut - přeskočíme
+                continue
+            
+            # Uložíme atributy pro použití při vytváření uzlu
+            essence_of[name] = essence
+            affiliation_of[name] = affiliation
+            kind_of[name] = kind
+            
+            # Pokud uzel už existuje, aktualizujeme jeho atributy
+            it = by_label.get(name)
+            if it and isinstance(it, (ObjectItem, ProcessItem)):
+                it.essence = essence
+                it.affiliation = affiliation
+                it.update()
+            else:
+                # Vytvoříme nový uzel přímo
+                if kind == "object":
+                    item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
+                    item.setPos(next_obj_pos())
+                    scene.addItem(item)
+                    by_label[name] = item
+                elif kind == "process":
+                    item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
+                    item.setPos(next_proc_pos())
+                    scene.addItem(item)
+                    by_label[name] = item
+            continue
 
     # === DRUHÝ PRŮCHOD: Parsování ostatních OPL vět řádek po řádku ===
     for raw in text.splitlines():
@@ -412,11 +484,16 @@ def build_from_opl(app, text: str):
         # === Simple "is a" - jednoduchá generalizace ===
         # Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
         # Poznámka: Link vytváříme jako sub → sup (protože generátor prohodí src↔dst pro strukturální vazby)
+        # Poznámka: Rozlišujeme generalizaci od definice atributů - generalizace má druhý název (super) začínající velkým písmenem
         m = RE_IS_A.match(line)
         if m:
-            sub = get_or_create_object(m.group("sub"))
-            sup = get_or_create_object(m.group("super"))
-            ensure_link(sub, sup, "generalization")
+            super_name = m.group("super").strip()
+            # Kontrola, zda to není definice atributů (pak by super_name bylo malými písmeny: physical, informatical, systemic, environmental)
+            # Pokud super_name začíná velkým písmenem, je to generalizace
+            if super_name and super_name[0].isupper():
+                sub = get_or_create_object(m.group("sub"))
+                sup = get_or_create_object(super_name)
+                ensure_link(sub, sup, "generalization")
             continue
 
         # === Simple "is an instance of" - jednoduchá instantiace ===

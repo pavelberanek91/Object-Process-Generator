@@ -6,6 +6,9 @@
 [ ] Ortogonality strukturalnich vztahu
 [ ] Tagged structural links
 [ ] Při přidání stavu by se měl automaticky objekt rozšířit svou velikostí a stavy se tam seřadit.
+[] Občas se vytvoří při Create OPL objekt, který je mimo aktuální obrazovku a musím ho hledat. 
+[] Implicitni hodnota procesu ma byt informatical
+[] S command pro vyber zkratka
 ---
 [ ] Vyresit vsechny typy vztahu
 [ ] "je to trosku komplikovanejsi kyz se micha in-out link pair s out na objekt nebo s out na vice stavu"
@@ -30,36 +33,82 @@
 [ ] vytvorit simulacni model pomoci asi Petriho siti
 ---
 
-# Test deklarace objektů s atributy a indiferentnosti vuci členu a/an
-[x] Car is an informatical and systemic object.
-[x] Car is an informatical and environmental object.
-[x] Car is an physical and systemic object.
-[x] Car is an physical and environmental object.
-[x] Car is a informatical and systemic object.
-[x] Car is a informatical and environmental object.
-[x] Car is a physical and systemic object.
-[x] Car is a physical and environmental object.
+# Test deklarace objektů a procesů s atributy a indiferentnosti vuci členu a/an a vuci poradi atributu
+[] Car is an informatical and systemic object.
+[] Car is an systemic and informatical object.
+[] Car is an informatical and environmental object.
+[] Car is an environmental and informatical object.
+[] Car is an physical and systemic object.
+[] Car is an systemic and physical object.
+[] Car is an physical and environmental object.
+[] Car is an environmental and physical object.
+[] Car is a informatical and systemic object.
+[] Car is a systemic and informatical object.
+[] Car is a informatical and environmental object.
+[] Car is a environmental and informatical object.
+[] Car is a physical and systemic object.
+[] Car is a systemic and physical object.
+[] Car is a physical and environmental object.
+[] Car is a environmental and physical object.
+[] Car is an informatical and systemic process.
+[] Car is an systemic and informatical  process.
+[] Car is an informatical and environmental process.
+[] Car is an environmental and informatical  process.
+[] Car is an physical and systemic process.
+[] Car is an systemic and physical process.
+[] Car is an physical and environmental process.
+[] Car is an environmental and physical process.
+[] Car is a informatical and systemic process.
+[] Car is a systemic and informatical process.
+[] Car is a informatical and environmental process.
+[] Car is a environmental and informatical process.
+[] Car is a physical and systemic process.
+[] Car is a systemic and physical process.
+[] Car is a physical and environmental process.
+[] Car is a environmental and physical process.
 
 # Test deklarace s implicitní hodnotou atributů. 
-[ ] Car is an informatical object.
-[ ] Car is an physical object.
-[ ] Car is an environmental object.
-[ ] Car is an systemic object.
-[ ] Car is a informatical object.
-[ ] Car is a physical object.
-[ ] Car is a environmental object.
-[ ] Car is a systemic object.
+[] Car is an informatical object.
+[] Car is an physical object.
+[] Car is an environmental object.
+[] Car is an systemic object.
+[] Car is a informatical object.
+[] Car is a physical object.
+[] Car is a environmental object.
+[] Car is a systemic object.
+[] Car is an informatical process.
+[] Car is an physical process.
+[] Car is an environmental process.
+[] Car is an systemic process.
+[] Car is a informatical process.
+[] Car is a physical process.
+[] Car is a environmental process.
+[] Car is a systemic process.
 
 # Test deklarace vs. generalizace. Teď to má vytvořit vztah generalizace-specializace.
-[ ] Car is an Informatical object.
-[ ] Car is an Physical object.
-[ ] Car is an Environmental object.
-[ ] Car is an Systemic object.
-[ ] Car is a Informatical object.
-[ ] Car is a Physical object.
-[ ] Car is a Environmental object.
-[ ] Car is a Systemic object.
+[] Car is an Informatical object.
+[] Car is an Physical object.
+[] Car is an Environmental object.
+[] Car is an Systemic object.
+[] Car is a Informatical object.
+[] Car is a Physical object.
+[] Car is a Environmental object.
+[] Car is a Systemic object.
+[] Car is an Informatical process.
+[] Car is an Physical process.
+[] Car is an Environmental process.
+[] Car is an Systemic process.
+[] Car is a Informatical process.
+[] Car is a Physical process.
+[] Car is a Environmental process.
+[] Car is a Systemic process.
+[] Car is a Physical and environmental process.
+[] Car is a Environmental and physical process.
+[] Car is a Physical and Environmental process.
+[] Car is a Environmental and Physical process.
 
+
+# Pr.1
 Car is an informatical and systemic object.
 Powertrain is an informatical and systemic object.
 Body is an informatical and systemic object.
@@ -78,13 +127,48 @@ Driver is an informatical and systemic object.
 Stopping is an informatical and systemic process.
 Stopping changes Velocity of Car from non-zero to zero.
 Stopping requires Braking System and Driver.
-[x] Příklad funguje
+[] Příklad funguje
+
+# Př.2
+Raw Metal Bar is a physical and systemic object.
+Raw Metal Bar can be pre-cut or cut.
+Machine Operator is a physical and systemic object.
+Coolant is a physical and systemic object.
+Machining is a physical and systemic process.
+Machining requires Coolant.
+Machine Operator handles Machining.
+Part is a physical and systemic object.
+Part can be pre-tested or tested.
+[] Příklad funguje
+
+# Př. 3
+Cutting changes Raw Metal Bar from pre-cut to cut.
+Machining consumes Raw Metal Bar.
+Machining yields pre-tested Part.
+Testing changes Part from pre-tested to tested.
+
+Cutting changes Raw Metal Bar from pre-cut to cut.
+Machining consumes Raw Metal Bar.
+Machining yields Part at state pre-tested.
+Testing changes Part from pre-tested to tested.
+
+Raw Metal Bar is an informatical and systemic object.
+Raw Metal Bar can be cut or pre-cut.
+Part is an informatical and systemic object.
+Part can be pre-tested or tested.
+Cutting is an informatical and systemic process.
+Cutting changes Raw Metal Bar from pre-cut to cut.
+Machining is an informatical and systemic process.
+Machining consumes Raw Metal Bar.
+Machining yields Part at state pre-tested.
+Testing is an informatical and systemic process.
+Testing changes Part from pre-tested to tested.
 
 
 
-x Raw Metal Bar is physical.
-# Raw Metal Bar is physical and systemic object
+[] Příklad funguje
 
+# Př. 4
 Raw Metal Bar is physical.
 Raw Metal Bar can be pre-cut or cut.
 Machine Operator is physical.
@@ -99,7 +183,9 @@ Cutting changes Raw Metal Bar from pre-cut to cut.
 Machining consumes Raw Metal Bar.
 Machining yields pre-tested Part.
 Testing changes Par from pre-tested to tested.
+[] Příklad funguje
 
+# Př. 5
 Delivery Airline is a physical object.
 Delivery Drone is a physical object.
 Pilot is a physical object.
@@ -116,7 +202,9 @@ Delivery Preparing changes Package from on store to on delivery.
 Store handles Delivery Preparing.
 Customer handles Delivery Requesting.
 Delivery Requesting affects Store.
+[] Příklad funguje
 
+# Př. 6
 Christopher is physical.
 Christopher knows OPM Theory.
 Christopher handles presenting.
@@ -124,22 +212,28 @@ OPM consists of OPM Theory.
 presenting is physical.
 presenting consumes OPM Theory.
 presenting yields Presentation.
+[] Příklad funguje
 
+# Př. 7
 Location of Passenger can be destination or origin. State origin is initial. State destination is final.
 Driver owns Car.
 Passenger exhibits Location.
 Ride-sharing Service Providing changes Location of Passenger from origin to destination.
 Driver handles Ride-sharing Service Providing.
 Ride-sharing Service Providing requires Car.
+[] Příklad funguje
 
-x Food exhibits Spoilage Rate, which can be fast or slow.
+# Př. 8
+Food exhibits Spoilage Rate, which can be fast or slow.
 Spoilage Slowing changes Spoilage Rate of Food from fast to slow.
 Freezing, Dehydrating, and Canning are Spoilage Slowing.
 Canning, Dehydrating and Freezing are Spoilage Slowings.
 Freezing requires Freezer.
 Dehydrating requires Dehydrator.
 Canning requires Cannery.
+[] Příklad funguje
 
+# Př. 9
 Material can be undivided or divided 
 Separating changes Material from undivided to divided.
 Operator-Scissors Complex exhibits Cutting 
@@ -147,7 +241,9 @@ Operator-Scissors Complex consists of Scissors and Operator.
 Cutting is Separating.
 Cutting requires Scissors.
 Operator handles Cutting.
+[] Příklad funguje
 
+# Př. 10
 Paper exhibits Position, which can be movable and fixed.
 Holding changes Position of Paper from movable to fixed.
 Holding maintains fixed Position of Paper.
@@ -155,20 +251,28 @@ Weight Applying is Holding.
 Weight Applying requires Weight.
 Stone is a Weight.
 Person handles Weight Applying
+[] Příklad funguje
 
+# Př. 11
 Tube exhibits Curvature with values Initial and Prescribed.
 Bending changes Curvature of Tube from Initial value to Prescribed value.
 Bending yields Distorting Force, which can be acceptable or unacceptable.
 Distortion Preventing changes Distorting Force from acceptable to unacceptable.
+[] Příklad funguje
 
+# Př. 12
 Food exhibits Spoilage Rate, which can be fast, slow, or very slow.
 Chilling changes Spoilage Rate of Food from fast to slow.
 Freezing changes Spoilage Rate of Food from fast to very slow.
+[] Příklad funguje
 
+# Př. 13
 Water exhibits Flow Rate, which can be maintained or changed and temperature, which can be maintained or changed.
 Flow Controlling changes Flow Rate of Water from maintained to changed.
 Temp Controlling changes Temperature Rae of Water from maintained to changed.
+[] Příklad funguje
 
+# Př. 14
 Contents, Insulation, Door, Person, Hinge Location, and Door Position are physical objects.
 Insulating and Door Opening are physical processes.
 Insulating affects Energy Loss Rate.
@@ -181,7 +285,9 @@ Door Opening requires Door.
 Person handles Door Opening.
 Efficiency Rating Selecting affects Efficiency Rating and Energy Loss Rate.
 Hinge Location Selecting affects Hinge Location and Energy Loss Rate.
+[] Příklad funguje
 
+# Př. 15
 Freezer, Sensor/Compressor System, Sensor, Compressor, Circulation System, and Condenser are physical System objects.
 Temp Sensing, Air Cooling, Air Circulating, and Moisture Condensing are physical processes.
 Freezer consists of Sensor/ Compressor System, Circulation System, and Condenser.
@@ -190,4 +296,4 @@ Temp Sensing requires Sensor.
 Air Cooling requires Compressor.
 Air Circulating requires Circulation System.
 Moisture Condensing requires Condenser.
-
+[] Příklad funguje

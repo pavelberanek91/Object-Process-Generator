@@ -79,7 +79,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Může obsahovat stavy (StateItem jako potomky)
     - Podporuje změnu velikosti pomocí resize handles
     """
-    def __init__(self, rect: QRectF, label: str = "Object", essence: str = "physical", affiliation: str = "systemic"):
+    def __init__(self, rect: QRectF, label: str = "Object", essence: str = "informatical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("object", label)
         self.essence = essence  # "physical" nebo "informatical"

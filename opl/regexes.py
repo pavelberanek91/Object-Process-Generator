@@ -29,8 +29,9 @@ import re
 
 # Consumption - proces spotřebovává objekt (nebo objekt ve stavu)
 # Příklad: "Manufacturing consumes Material at state Raw."
+# Příklad: "Machining consumes Raw Metal Bar."
 RE_CONSUMES = re.compile(
-    r'^\s*(?P<p>.+?)\s+consume(?:s)?\s+(?P<obj>\w+)(?:\s+at\s+state\s+(?P<state>\w+))?\.\s*$',
+    r'^\s*(?P<p>.+?)\s+consume(?:s)?\s+(?P<obj>.+?)(?:\s+at\s+state\s+(?P<state>\w+))?\.\s*$',
     re.I
 )
 
@@ -88,7 +89,8 @@ RE_STATES = re.compile(r'^\s*(?P<obj>.+?)\s+can\s+be\s+(?P<states>.+?)\.\s*$', r
 
 # Simple "is a" - jednoduchá generalizace
 # Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
-RE_IS_A = re.compile(r'^\s*(?P<sub>.+?)\s+is\s+a[n]?\s+(?P<super>.+?)\.\s*$', re.I)
+# Poznámka: Tento regex se používá pouze pro generalizaci, kdy druhý název (super) začíná velkým písmenem
+RE_IS_A = re.compile(r'^\s*(?P<sub>.+?)\s+is\s+a[n]?\s+(?P<super>.+?)\.\s*$')
 
 # Simple "is an instance of" - jednoduchá instantiace
 # Příklad: "John is an instance of Person."
@@ -109,10 +111,25 @@ RE_CANBE = re.compile(
 )
 
 # === Definice objektů a procesů s atributy ===
-# Definice s essence a affiliation
+# Definice s essence a affiliation - podporuje obě pořadí
 # Příklad: "A is a informatical and systemic object."
+# Příklad: "A is a systemic and informatical object."
 # Příklad: "B is a physical and environmental process."
 RE_DEFINITION = re.compile(
-    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+(?P<essence>physical|informatical)\s+and\s+(?P<affiliation>systemic|environmental)\s+(?P<kind>object|process)\.+\s*$',
+    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+'
+    r'(?:(?P<essence1>physical|informatical)\s+and\s+(?P<affiliation1>systemic|environmental)|'
+    r'(?P<affiliation2>systemic|environmental)\s+and\s+(?P<essence2>physical|informatical))'
+    r'\s+(?P<kind>object|process)\.+\s*$',
+    re.I
+)
+
+# Definice s jedním atributem - essence nebo affiliation
+# Příklad: "Car is an informatical object." (affiliation=systemic implicitní)
+# Příklad: "Car is a systemic object." (essence=informatical implicitní pro objekty)
+# Poznámka: Atributy musí být malými písmeny, jinak jde o generalizaci
+RE_DEFINITION_SINGLE = re.compile(
+    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+'
+    r'(?P<attr>physical|informatical|systemic|environmental)'
+    r'\s+(?P<kind>object|process)\.+\s*$',
     re.I
 )
