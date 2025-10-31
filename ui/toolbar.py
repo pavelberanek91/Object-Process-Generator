@@ -59,33 +59,6 @@ class ToolbarManager:
         tb = QToolBar("Tools")
         self.main_window.addToolBar(Qt.TopToolBarArea, tb)
         
-        # File menu
-        self._add_file_menu(tb)
-        
-        tb.addSeparator()
-        # View menu (toggle dokovacích panelů)
-        self._add_view_menu(tb)
-        
-        tb.addSeparator()
-        # OPL menu
-        self._add_opl_menu(tb)
-        
-        tb.addSeparator()
-        
-        # Out-zoom button (viditelné pouze v in-zoom módu)
-        self.main_window.act_out_zoom = self._add_icon_btn(
-            tb,
-            icon_shape("zoom_out"),
-            "Back to Parent (Out-zoom)",
-            lambda: self.main_window.navigate_to_parent()
-        )
-        self.main_window.act_out_zoom.setVisible(False)  # Zpočátku skryté
-        
-        tb.addSeparator()
-        self._add_export_menu(tb)
-        
-        self._add_spacing(tb, 16)
-        
         # Mode actions
         self._add_mode_actions(tb)
         
@@ -97,6 +70,16 @@ class ToolbarManager:
             "Delete (Del)", 
             lambda: self.main_window.delete_selected()
         )
+        
+        # Out-zoom button (viditelné pouze v in-zoom módu)
+        self.main_window.act_out_zoom = self._add_icon_btn(
+            tb,
+            icon_shape("zoom_out"),
+            "Back to Parent (Out-zoom)",
+            lambda: self.main_window.navigate_to_parent()
+        )
+        self.main_window.act_out_zoom.setVisible(False)  # Zpočátku skryté
+        
         tb.addSeparator()
         
         # Zoom slider
@@ -121,6 +104,30 @@ class ToolbarManager:
         
         # Uložit slider pro pozdější aktualizaci
         self.main_window.zoom_slider = zoom_slider
+        
+        # Menu (File, View, OPL, Image) jsou dostupná pouze v nativním menubaru, ne v toolbaru
+        self._add_menu_to_menubar()
+    
+    def _add_menu_to_menubar(self):
+        """Přidá menu pouze do nativního menubaru (ne do toolbaru)."""
+        try:
+            # File menu
+            file_menu = self._create_file_menu()
+            self.main_window.menuBar().addMenu(file_menu)
+            
+            # View menu
+            view_menu = self._create_view_menu()
+            self.main_window.menuBar().addMenu(view_menu)
+            
+            # OPL menu
+            opl_menu = self._create_opl_menu()
+            self.main_window.menuBar().addMenu(opl_menu)
+            
+            # Image menu
+            image_menu = self._create_export_menu()
+            self.main_window.menuBar().addMenu(image_menu)
+        except Exception:
+            pass
     
     def _create_edit_toolbar(self):
         """Vytvoří edit toolbar s undo/redo."""
@@ -132,8 +139,8 @@ class ToolbarManager:
         act_undo.setShortcut("Ctrl+Z")
         act_redo.setShortcut("Ctrl+Y")
     
-    def _add_file_menu(self, tb: QToolBar):
-        """Přidá File menu do toolbaru."""
+    def _create_file_menu(self):
+        """Vytvoří File menu (pouze pro menubar)."""
         file_menu = QMenu("File", self.main_window)
         # New OPD - odstraněno: canvasy jsou teď automaticky vytvářeny pro zoom-in mechanismus
         
@@ -171,20 +178,10 @@ class ToolbarManager:
         act_exit.triggered.connect(QApplication.instance().quit)
         file_menu.addAction(act_exit)
         
-        file_btn = QToolButton()
-        file_btn.setText("File")
-        file_btn.setMenu(file_menu)
-        file_btn.setPopupMode(QToolButton.InstantPopup)
-        file_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        tb.addWidget(file_btn)
-        # Přidej také do nativního menubaru (macOS zobrazuje zkratky vpravo)
-        try:
-            self.main_window.menuBar().addMenu(file_menu)
-        except Exception:
-            pass
+        return file_menu
     
-    def _add_export_menu(self, tb: QToolBar):
-        """Přidá Export menu do toolbaru."""
+    def _create_export_menu(self):
+        """Vytvoří Image menu (pouze pro menubar)."""
         export_menu = QMenu("Image", self.main_window)
         act_jpg = QAction(self.main_window)
         act_jpg.setShortcut(QKeySequence("Ctrl+Shift+J"))
@@ -204,20 +201,10 @@ class ToolbarManager:
         act_svg.triggered.connect(lambda: self.main_window.export_image("svg"))
         export_menu.addAction(act_svg)
         
-        export_btn = QToolButton()
-        export_btn.setText("Image")
-        export_btn.setMenu(export_menu)
-        export_btn.setPopupMode(QToolButton.InstantPopup)
-        export_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        tb.addWidget(export_btn)
-        # Přidej také do nativního menubaru
-        try:
-            self.main_window.menuBar().addMenu(export_menu)
-        except Exception:
-            pass
+        return export_menu
 
-    def _add_opl_menu(self, tb: QToolBar):
-        """Přidá OPL menu do toolbaru."""
+    def _create_opl_menu(self):
+        """Vytvoří OPL menu (pouze pro menubar)."""
         opl_menu = QMenu("OPL", self.main_window)
         
         # Import OPL
@@ -243,20 +230,10 @@ class ToolbarManager:
         act_export_opl.triggered.connect(lambda: self.main_window.preview_opl())
         opl_menu.addAction(act_export_opl)
         
-        opl_btn = QToolButton()
-        opl_btn.setText("OPL")
-        opl_btn.setMenu(opl_menu)
-        opl_btn.setPopupMode(QToolButton.InstantPopup)
-        opl_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        tb.addWidget(opl_btn)
-        # Přidej také do nativního menubaru
-        try:
-            self.main_window.menuBar().addMenu(opl_menu)
-        except Exception:
-            pass
+        return opl_menu
     
-    def _add_view_menu(self, tb: QToolBar):
-        """Přidá View menu s přepínáním hierarchie a properties panelu."""
+    def _create_view_menu(self):
+        """Vytvoří View menu (pouze pro menubar)."""
         view_menu = QMenu("View", self.main_window)
         
         # Toggle akce pro dock panely
@@ -274,17 +251,7 @@ class ToolbarManager:
             view_menu.addAction(act_p)
             self.main_window.addAction(act_p)
         
-        view_btn = QToolButton()
-        view_btn.setText("View")
-        view_btn.setMenu(view_menu)
-        view_btn.setPopupMode(QToolButton.InstantPopup)
-        view_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
-        tb.addWidget(view_btn)
-        # Přidej také do nativního menubaru
-        try:
-            self.main_window.menuBar().addMenu(view_menu)
-        except Exception:
-            pass
+        return view_menu
     
     def _add_mode_actions(self, tb: QToolBar):
         """Přidá akce pro přepínání módů."""

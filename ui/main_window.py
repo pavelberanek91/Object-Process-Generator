@@ -780,7 +780,8 @@ class MainWindow(QMainWindow):
         """Nastaví režim editoru."""
         self.mode = mode
         try:
-            self.actions[mode].setChecked(True)
+            if hasattr(self, 'actions') and mode in self.actions:
+                self.actions[mode].setChecked(True)
         except Exception:
             pass
         
