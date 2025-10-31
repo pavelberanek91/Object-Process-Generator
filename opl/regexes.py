@@ -41,7 +41,11 @@ RE_INPUTS = re.compile(r'^\s*(?P<p>.+?)\s+take(?:s)?\s+(?P<objs>.+?)\s+as\s+inpu
 
 # Yield/Result - proces vytváří/produkuje objekty
 # Příklad: "Manufacturing yields Product."
-RE_YIELDS = re.compile(r'^\s*(?P<p>.+?)\s+yield(?:s)?\s+(?P<objs>.+?)\.\s*$', re.I)
+# Příklad: "Machining yields Part at state pre-tested."
+RE_YIELDS = re.compile(
+    r'^\s*(?P<p>.+?)\s+yield(?:s)?\s+(?P<obj>.+?)(?:\s+at\s+state\s+(?P<state>\w+(?:-\w+)*))?\.\s*$',
+    re.I
+)
 
 # Agent - kdo řídí proces (agentem může být člověk, stroj, jiný objekt)
 # Příklad: "Worker handles Manufacturing."

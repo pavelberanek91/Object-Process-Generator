@@ -144,28 +144,8 @@ Part can be pre-tested or tested.
 # Př. 3
 Cutting changes Raw Metal Bar from pre-cut to cut.
 Machining consumes Raw Metal Bar.
-Machining yields pre-tested Part.
-Testing changes Part from pre-tested to tested.
-
-Cutting changes Raw Metal Bar from pre-cut to cut.
-Machining consumes Raw Metal Bar.
 Machining yields Part at state pre-tested.
 Testing changes Part from pre-tested to tested.
-
-Raw Metal Bar is an informatical and systemic object.
-Raw Metal Bar can be cut or pre-cut.
-Part is an informatical and systemic object.
-Part can be pre-tested or tested.
-Cutting is an informatical and systemic process.
-Cutting changes Raw Metal Bar from pre-cut to cut.
-Machining is an informatical and systemic process.
-Machining consumes Raw Metal Bar.
-Machining yields Part at state pre-tested.
-Testing is an informatical and systemic process.
-Testing changes Part from pre-tested to tested.
-
-
-
 [] Příklad funguje
 
 # Př. 4

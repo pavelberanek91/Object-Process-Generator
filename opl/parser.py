@@ -365,12 +365,21 @@ def build_from_opl(app, text: str):
 
         # === Yield/Result - proces vytváří objekty ===
         # Příklad: "Manufacturing yields Product."
+        # Příklad: "Machining yields Part at state pre-tested."
         m = RE_YIELDS.match(line)
         if m:
             p = get_or_create_process(m.group("p"))
-            # Může vytvářet více objektů
-            for o in _split_names(m.group("objs")):
-                ensure_link(p, get_or_create_object(o), "result")
+            obj_name = _norm(m.group("obj"))
+            state = m.group("state")  # Volitelný stav
+            obj = get_or_create_object(obj_name)
+            
+            if state:
+                # Vytváří konkrétní stav objektu
+                s_item = get_or_create_state(obj, state)
+                ensure_link(p, s_item, "result")
+            else:
+                # Vytváří celý objekt
+                ensure_link(p, obj, "result")
             continue
 
         # === Agent - kdo řídí proces ===
