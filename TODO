@@ -61,62 +61,23 @@
 [ ] Car is a Systemic object.
 
 Car is an informatical and systemic object.
-- Car is a informatical and systemic object.
-
 Powertrain is an informatical and systemic object.
-- Powertrain is a informatical and systemic object.
-
 Body is an informatical and systemic object.
-- Body is a informatical and systemic object.
-
 Electrical System is an informatical and systemic object.
-- Electrical System is a informatical and systemic object.
-
 Interior is an informatical and systemic object.
-- Interior is a informatical and systemic object.
-
 Chassis is an informatical and systemic object.
-- Chassis is a informatical and systemic object.
-
-(x) Car consists of Body, Chassis, Electrical System, Interior, and Powertrain.
-- Braking System consists of Chassis.
-- Powertrain consists of Car.
-- Interior consists of Car.
-- Electrical System consists of Car.
-- Chassis consists of Car.
-- Body consists of Car.
-
+Car consists of Body, Chassis, Electrical System, Interior, and Powertrain.
 Braking System is an informatical and systemic object.
-- Braking System is a informatical and systemic object.
-
 Chassis consists of Braking System.
-
 Abs is an informatical and systemic object.
-- Abs is a informatical and systemic object.
-
 Abs is a Braking System.
-
 Velocity of Car is an informatical and systemic object.
-- Velocity of Car is a informatical and systemic object.
-
 Velocity of Car can be non-zero or zero.
-- Velocity of Car can be non-zero or zero.
-
-(x) Car exhibits Velocity of Car.
-- Velocity of Car exhibits Car.
-
+Car exhibits Velocity of Car.
 Driver is an informatical and systemic object.
-- Driver is a informatical and systemic object.
-
 Stopping is an informatical and systemic process.
-- Stopping is a informatical and systemic process.
-
 Stopping changes Velocity of Car from non-zero to zero.
-- Stopping changes Velocity of Car from non-zero to zero.
-
 Stopping requires Braking System and Driver.
-- Stopping requires Driver and Braking System.
-
 [x] Příklad funguje
 
 

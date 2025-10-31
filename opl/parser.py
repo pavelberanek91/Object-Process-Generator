@@ -410,12 +410,13 @@ def build_from_opl(app, text: str):
             continue
 
         # === Simple "is a" - jednoduchá generalizace ===
-        # Příklad: "Car is a Vehicle."
+        # Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
+        # Poznámka: Link vytváříme jako sub → sup (protože generátor prohodí src↔dst pro strukturální vazby)
         m = RE_IS_A.match(line)
         if m:
             sub = get_or_create_object(m.group("sub"))
             sup = get_or_create_object(m.group("super"))
-            ensure_link(sup, sub, "generalization")
+            ensure_link(sub, sup, "generalization")
             continue
 
         # === Simple "is an instance of" - jednoduchá instantiace ===
