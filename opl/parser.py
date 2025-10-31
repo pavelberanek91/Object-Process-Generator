@@ -557,6 +557,24 @@ def build_from_opl(app, text: str):
                 get_or_create_state(obj, st)
             continue
 
+        # === Objekt s jedním stavem - "A is state." ===
+        # Příklad: "A is a1." (vytvoří objekt A se stavem a1)
+        # Poznámka: Stav musí začínat malým písmenem. Pokud začíná velkým písmenem, jde o generalizaci (RE_IS_A).
+        # Poznámka: Musí být kontrolováno před RE_IS_A, aby se rozlišil stav od generalizace.
+        m = RE_IS_STATE.match(line)
+        if m:
+            obj_name = _norm(m.group("obj"))
+            state_name = _norm(m.group("state"))
+            # Kontrola: pokud stav začíná malým písmenem a není to atribut, vytvoříme stav
+            # Atributy (physical, informatical, systemic, environmental) jsou zpracovány v prvním průchodu
+            if state_name and state_name[0].islower():
+                state_lower = state_name.lower()
+                # Pokud to není atribut, vytvoříme stav
+                if state_lower not in ("physical", "informatical", "systemic", "environmental"):
+                    obj = get_or_create_object(obj_name)
+                    get_or_create_state(obj, state_name)
+                    continue
+
         # === Simple "is a" - jednoduchá generalizace ===
         # Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
         # Poznámka: Link vytváříme jako sub → sup (protože generátor prohodí src↔dst pro strukturální vazby)

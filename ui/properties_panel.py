@@ -84,10 +84,7 @@ class PropertiesPanel(QDockWidget):
         form.addRow(self.lbl_card_src, self.ed_card_src)
         form.addRow(self.lbl_card_dst, self.ed_card_dst)
 
-        # OPL
-        self.btn_generate_opl = QPushButton("Generate OPL (preview)", self.panel_props)
-        self.btn_generate_opl.clicked.connect(self._on_generate_opl)
-        form.addRow(self.btn_generate_opl)
+        # OPL tlačítko odstraněno - přesunuto do OPL menu v toolbaru jako "Export OPL"
 
         self.panel_props.setLayout(form)
         self.setWidget(self.panel_props)
@@ -268,9 +265,4 @@ class PropertiesPanel(QDockWidget):
             
         for ln in links:
             ln.set_link_type(text)
-    
-    def _on_generate_opl(self):
-        """Handler pro generování OPL."""
-        if self.main_window:
-            self.main_window.preview_opl()
 

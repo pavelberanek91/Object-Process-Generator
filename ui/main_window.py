@@ -1014,13 +1014,20 @@ class MainWindow(QMainWindow):
             )
             if not path:
                 return
-            rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
-            img = QImage(int(rb.width()), int(rb.height()), QImage.Format_ARGB32_Premultiplied)
-            img.fill(0x00FFFFFF)
-            painter = QPainter(img)
-            self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
-            painter.end()
-            img.save(path)
+            # Dočasně vypneme mřížku pro export
+            original_grid_state = self.scene._draw_grid
+            self.scene.set_draw_grid(False)
+            try:
+                rb = self.scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
+                img = QImage(int(rb.width()), int(rb.height()), QImage.Format_ARGB32_Premultiplied)
+                img.fill(0x00FFFFFF)
+                painter = QPainter(img)
+                self.scene.render(painter, target=QRectF(0, 0, rb.width(), rb.height()), source=rb)
+                painter.end()
+                img.save(path)
+            finally:
+                # Vrátíme původní stav mřížky
+                self.scene.set_draw_grid(original_grid_state)
 
         elif kind == "svg":
             path, _ = QFileDialog.getSaveFileName(

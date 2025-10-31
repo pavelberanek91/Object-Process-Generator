@@ -151,3 +151,13 @@ RE_DEFINITION_MINIMAL = re.compile(
     r'(?P<attr>physical|informatical|systemic|environmental)\.+\s*$',
     re.I
 )
+
+# Objekt s jedním stavem - "A is state."
+# Příklad: "A is a1." (vytvoří objekt A se stavem a1)
+# Příklad: "A is pre-cut." (vytvoří objekt A se stavem pre-cut)
+# Poznámka: Stav musí začínat malým písmenem. Pokud začíná velkým písmenem, jde o generalizaci (RE_IS_A).
+# Poznámka: Musí být kontrolováno před RE_IS_A, aby se rozlišil stav od generalizace.
+RE_IS_STATE = re.compile(
+    r'^\s*(?P<obj>.+?)\s+is\s+(?P<state>[^\s.]+)\.\s*$',
+    re.I
+)

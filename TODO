@@ -141,9 +141,18 @@ Car is a Physical and environmental process.
 Car is a Environmental and physical process.
 Car is a Physical and Environmental process.
 Car is a Environmental and Physical process.
-
 [] funguje
 
+# Tvorba objektu se stavy
+D is a informatical and systemic object.
+C is a informatical and systemic object.
+B is a informatical and systemic object.
+A is a informatical and systemic object.
+D can be d1, d2, d3 or d4.
+C can be c1, c2 or c3.
+B can be b1 or b2.
+A is a1.
+[] funguje
 
 # Pr.1
 Car is an informatical and systemic object.
@@ -164,7 +173,6 @@ Driver is an informatical and systemic object.
 Stopping is an informatical and systemic process.
 Stopping changes Velocity of Car from non-zero to zero.
 Stopping requires Braking System and Driver.
-
 [] Příklad funguje
 
 # Př.2
@@ -177,7 +185,6 @@ Machining requires Coolant.
 Machine Operator handles Machining.
 Part is a physical and systemic object.
 Part can be pre-tested or tested.
-
 [] Příklad funguje
 
 # Př. 3
@@ -221,6 +228,66 @@ Machining yields pre-tested Part.
 Testing changes Part from pre-tested to tested.
 
 [] Příklad funguje
+
+# Př. moje
+A is a informatical and systemic object.
+E is a informatical and systemic object.
+F is a informatical and systemic object.
+G is a informatical and systemic object.
+H is a informatical and systemic object.
+I is a informatical and systemic object.
+I is i1.
+J is a informatical and systemic object.
+B is a informatical and systemic object.
+B is b1.
+C is a informatical and systemic object.
+C can be c1 or c2.
+D is a informatical and systemic object.
+D is d1.
+C, E, F and G are As.
+A consists of H, I and J.
+D exhibits A.
+B is an instance of A.
+P1 is a informatical and systemic process.
+P1 requires H.
+J handles P1.
+P1 consumes I at state i1.
+P2 is a informatical and systemic process.
+P2 yields B at state b1 and C.
+P3 is a informatical and systemic process.
+P3 changes C from c1 to c2.
+P4 is a informatical and systemic process.
+P4 consumes D.
+# OP CLoud
+A of D is an informatical and systemic object.
+E is an informatical and systemic object.
+F is an informatical and systemic object.
+G is an informatical and systemic object.
+H is an informatical and systemic object.
+I is an informatical and systemic object.
+I is i1.
+J is an informatical and systemic object.
+B is an informatical and systemic object.
+B is b1.
+C is an informatical and systemic object.
+C can be c1 or c2.
+D is an informatical and systemic object.
+D is d1.
+C, E, F, and G are AS.
+A consists of H, I, and J.
+D exhibits A.
+B is an instance of A.
+P1 is an informatical and systemic process.
+P1 requires H and J.
+P1 consumes I at state i1.
+P2 is an informatical and systemic process.
+P2 yields C and B at state b1.
+P3 is an informatical and systemic process.
+P3 changes C from c1 to c2.
+P4 is an informatical and systemic process.
+P4 consumes D.
+
+
 
 # Př. 5
 Delivery Airline is a physical object.
@@ -335,3 +402,34 @@ Air Cooling requires Compressor.
 Air Circulating requires Circulation System.
 Moisture Condensing requires Condenser.
 [] Příklad funguje
+
+
+
+
+
+P4 is a informatical and systemic process.
+E is a informatical and systemic object.
+G is a informatical and systemic object.
+F is a informatical and systemic object.
+P3 is a informatical and systemic process.
+P1 is a informatical and systemic process.
+P2 is a informatical and systemic process.
+B is a informatical and systemic object.
+C is a informatical and systemic object.
+D is a informatical and systemic object.
+A is a informatical and systemic object.
+B can be b1, b2 or b3.
+C can be a3 or c1.
+A is a1.
+C handles P3.
+P3 requires B.
+P1 consumes D.
+P1 affects C.
+P2 consumes A at state a1.
+P2 yields C and B at state b1.
+A consists of E and F.
+G exhibits A and P4.
+P4 is a P2.
+D is a C.
+C is a B.
+A is an instance of D.

@@ -29,6 +29,8 @@ def safe_base_filename(title: str | None = None) -> str:
         Bezpečný název souboru (bez přípony)
     """
     base = (title or "OPD").strip()
+    # Odstraní emoji prefixy (ikonky domáčku a zoomu)
+    base = base.replace("🔍 ", "").replace("🏠 ", "").strip()
     # Nahradí zakázané znaky podtržítkem
     base = re.sub(r'[\\/*?:"<>|]+', "_", base)
     base = re.sub(r"\s+", "_", base)  # Více mezer → jedno podtržítko
@@ -205,7 +207,7 @@ def load_scene_from_json(scene, allowed_link, new_canvas_callback=None, new_tab:
         new_canvas_callback: Funkce pro vytvoření nového tabu
         new_tab: Pokud True, načte do nového tabu; jinak do aktuální scény
     """
-    caption = "Import OPD (new tab)" if new_tab else "Import OPD (current tab)"
+    caption = "Import OPD"
     path, _ = QFileDialog.getOpenFileName(None, caption, "", "JSON (*.json)")
     if not path:
         return

@@ -12,11 +12,24 @@ from PySide6.QtWidgets import QGraphicsScene
 from constants import GRID_SIZE
 
 class GridScene(QGraphicsScene):
+    def __init__(self, parent=None):
+        """Inicializuje GridScene s mřížkou zapnutou."""
+        super().__init__(parent)
+        self._draw_grid = True  # Flag pro zapínání/vypínání mřížky
+    
+    def set_draw_grid(self, enabled: bool) -> None:
+        """Nastaví, zda se má kreslit mřížka."""
+        self._draw_grid = enabled
+    
     def drawBackground(self, painter: QPainter, rect: QRectF) -> None:
         """Vykreslí mřížku do pozadí scény."""
 
         # nejdřív necháme QGraphicsScene udělat své vlastní pozadí (pokud nějaké má)
         super().drawBackground(painter, rect)
+        
+        # Pokud je mřížka vypnutá, nevykreslujeme ji
+        if not self._draw_grid:
+            return
 
         # Zarovnání výchozích souřadnic mřížky na nejbližší nižší násobek GRID_SIZE.
         # Používá se floor() a pak modulo: tím zjistíme, o kolik jsme „odjetí“ od násobku.

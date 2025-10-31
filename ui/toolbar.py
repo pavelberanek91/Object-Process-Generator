@@ -67,6 +67,10 @@ class ToolbarManager:
         self._add_view_menu(tb)
         
         tb.addSeparator()
+        # OPL menu
+        self._add_opl_menu(tb)
+        
+        tb.addSeparator()
         
         # Out-zoom button (viditelné pouze v in-zoom módu)
         self.main_window.act_out_zoom = self._add_icon_btn(
@@ -76,11 +80,6 @@ class ToolbarManager:
             lambda: self.main_window.navigate_to_parent()
         )
         self.main_window.act_out_zoom.setVisible(False)  # Zpočátku skryté
-        
-        tb.addSeparator()
-        self._add_btn(tb, "Create OPL", lambda: self.main_window.import_opl_dialog())
-        tb.addSeparator()
-        self._add_btn(tb, "Generate OPL", lambda: self.main_window.open_nl_to_opl_dialog())
         
         tb.addSeparator()
         self._add_export_menu(tb)
@@ -136,14 +135,8 @@ class ToolbarManager:
     def _add_file_menu(self, tb: QToolBar):
         """Přidá File menu do toolbaru."""
         file_menu = QMenu("File", self.main_window)
-        # New OPD
-        act_new = QAction(self.main_window)
-        act_new.setShortcut(QKeySequence("Ctrl+N"))
-        act_new.setText("New OPD")
-        act_new.triggered.connect(lambda: self.main_window._new_canvas())
-        file_menu.addAction(act_new)
-        file_menu.addSeparator()
-
+        # New OPD - odstraněno: canvasy jsou teď automaticky vytvářeny pro zoom-in mechanismus
+        
         # Export OPD
         act_export = QAction(self.main_window)
         act_export.setShortcut(QKeySequence("Ctrl+S"))
@@ -153,11 +146,11 @@ class ToolbarManager:
         )
         file_menu.addAction(act_export)
 
-        # Import OPD (Current Tab)
-        act_import_cur = QAction(self.main_window)
-        act_import_cur.setShortcut(QKeySequence("Ctrl+I"))
-        act_import_cur.setText("Import OPD — Current Tab")
-        act_import_cur.triggered.connect(
+        # Import OPD
+        act_import = QAction(self.main_window)
+        act_import.setShortcut(QKeySequence("Ctrl+I"))
+        act_import.setText("Import OPD")
+        act_import.triggered.connect(
             lambda: load_scene_from_json(
                 self.main_window.scene,
                 self.main_window.allowed_link,
@@ -165,41 +158,11 @@ class ToolbarManager:
                 new_tab=False
             )
         )
-        file_menu.addAction(act_import_cur)
-
-        # Import OPD (New Tab)
-        act_import_new = QAction(self.main_window)
-        act_import_new.setShortcut(QKeySequence("Ctrl+Shift+I"))
-        act_import_new.setText("Import OPD — New Tab")
-        act_import_new.triggered.connect(
-            lambda: load_scene_from_json(
-                self.main_window.scene,
-                self.main_window.allowed_link,
-                new_canvas_callback=self.main_window._new_canvas,
-                new_tab=True
-            )
-        )
-        file_menu.addAction(act_import_new)
+        file_menu.addAction(act_import)
 
         file_menu.addSeparator()
-
-        # Rename OPD
-        act_rename = QAction(self.main_window)
-        act_rename.setShortcut(QKeySequence("Ctrl+R"))
-        act_rename.setText("Rename OPD")
-        act_rename.triggered.connect(
-            lambda: self.main_window._rename_tab(self.main_window.tabs.currentIndex())
-        )
-        file_menu.addAction(act_rename)
-
-        # Close Tab
-        act_close = QAction(self.main_window)
-        act_close.setShortcut(QKeySequence("Ctrl+W"))
-        act_close.setText("Close Tab")
-        act_close.triggered.connect(lambda: self.main_window._close_current_tab())
-        file_menu.addAction(act_close)
-
-        file_menu.addSeparator()
+        # Rename OPD - odstraněno: přejmenování se provádí přes pravý klik na název canvasu (procesu)
+        # Close Tab - odstraněno: zavření se provádí přes pravý klik na název canvasu (procesu)
 
         # Exit
         act_exit = QAction(self.main_window)
@@ -253,6 +216,45 @@ class ToolbarManager:
         except Exception:
             pass
 
+    def _add_opl_menu(self, tb: QToolBar):
+        """Přidá OPL menu do toolbaru."""
+        opl_menu = QMenu("OPL", self.main_window)
+        
+        # Import OPL
+        act_import_opl = QAction(self.main_window)
+        act_import_opl.setShortcut(QKeySequence("Ctrl+Shift+I"))
+        act_import_opl.setText("Import OPL")
+        act_import_opl.triggered.connect(lambda: self.main_window.import_opl_dialog())
+        opl_menu.addAction(act_import_opl)
+        
+        # Generate OPL
+        act_generate_opl = QAction(self.main_window)
+        act_generate_opl.setShortcut(QKeySequence("Ctrl+Shift+G"))
+        act_generate_opl.setText("Generate OPL")
+        act_generate_opl.triggered.connect(lambda: self.main_window.open_nl_to_opl_dialog())
+        opl_menu.addAction(act_generate_opl)
+        
+        opl_menu.addSeparator()
+        
+        # Export OPL
+        act_export_opl = QAction(self.main_window)
+        act_export_opl.setShortcut(QKeySequence("Ctrl+Shift+E"))
+        act_export_opl.setText("Export OPL")
+        act_export_opl.triggered.connect(lambda: self.main_window.preview_opl())
+        opl_menu.addAction(act_export_opl)
+        
+        opl_btn = QToolButton()
+        opl_btn.setText("OPL")
+        opl_btn.setMenu(opl_menu)
+        opl_btn.setPopupMode(QToolButton.InstantPopup)
+        opl_btn.setToolButtonStyle(Qt.ToolButtonTextOnly)
+        tb.addWidget(opl_btn)
+        # Přidej také do nativního menubaru
+        try:
+            self.main_window.menuBar().addMenu(opl_menu)
+        except Exception:
+            pass
+    
     def _add_view_menu(self, tb: QToolBar):
         """Přidá View menu s přepínáním hierarchie a properties panelu."""
         view_menu = QMenu("View", self.main_window)
