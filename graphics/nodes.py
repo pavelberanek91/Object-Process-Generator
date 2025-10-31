@@ -194,7 +194,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     - Podporuje změnu velikosti pomocí resize handles
     - Dvojklik otevře in-zoom view (modelování vnitřku procesu)
     """
-    def __init__(self, rect: QRectF, label: str = "Process", essence: str = "physical", affiliation: str = "systemic"):
+    def __init__(self, rect: QRectF, label: str = "Process", essence: str = "informatical", affiliation: str = "systemic"):
         super().__init__(rect)
         self.init_node("process", label)
         self.essence = essence  # "physical" nebo "informatical"

@@ -117,8 +117,8 @@ def build_from_opl(app, text: str):
         if isinstance(it, (ObjectItem, ProcessItem)):
             by_label[it.label] = it
             kind_of[it.label] = it.kind
-            # Pro objekty je výchozí essence "informatical", pro procesy "physical"
-            default_essence = 'informatical' if isinstance(it, ObjectItem) else 'physical'
+            # Pro objekty i procesy je výchozí essence "informatical"
+            default_essence = 'informatical'
             essence_of[it.label] = getattr(it, 'essence', default_essence)
             affiliation_of[it.label] = getattr(it, 'affiliation', 'systemic')
 
@@ -154,7 +154,7 @@ def build_from_opl(app, text: str):
         if it and isinstance(it, ObjectItem):
             return it
         # Vytvoří nový proces s atributy z definice (pokud existují)
-        essence = essence_of.get(name, "physical")
+        essence = essence_of.get(name, "informatical")
         affiliation = affiliation_of.get(name, "systemic")
         item = ProcessItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
         item.setPos(next_proc_pos())
@@ -297,7 +297,7 @@ def build_from_opl(app, text: str):
                 if kind == "object":
                     essence = "informatical"
                 else:  # process
-                    essence = "physical"
+                    essence = "informatical"
             else:
                 # Neznámý atribut - přeskočíme
                 continue
@@ -326,6 +326,61 @@ def build_from_opl(app, text: str):
                     scene.addItem(item)
                     by_label[name] = item
             continue
+        
+        # Zpracování minimálních definic s jedním atributem - bez "a/an" a bez "object/process"
+        # Příklad: "Raw Metal Bar is physical." (defaultně objekt, affiliation=systemic implicitní)
+        # Příklad: "Car is systemic." (defaultně objekt, essence=informatical implicitní)
+        m = RE_DEFINITION_MINIMAL.match(line)
+        if m:
+            name = _norm(m.group("name"))
+            attr_raw = m.group("attr")  # Surový atribut (nechceme .lower() hned, potřebujeme zkontrolovat velikost písmen)
+            
+            # Kontrola: pokud atribut začíná velkým písmenem, jde o generalizaci, ne o definici atributu
+            # Toto je důležité pro rozlišení "Car is Physical." (generalizace)
+            # od "Car is physical." (definice atributu)
+            if attr_raw and attr_raw[0].isupper():
+                # Není to definice atributu, ale generalizace - přeskočíme to zde,
+                # bude zpracováno v druhém průchodu jako RE_IS_A
+                continue
+            
+            # Atribut je malými písmeny, takže jde o definici atributu
+            attr = attr_raw.lower()
+            # Defaultně vytváříme objekt (ne proces)
+            kind = "object"
+            
+            # Určíme, zda je to essence nebo affiliation
+            if attr in ("physical", "informatical"):
+                # Je to essence
+                essence = attr
+                # Implicitní affiliation
+                affiliation = "systemic"
+            elif attr in ("systemic", "environmental"):
+                # Je to affiliation
+                affiliation = attr
+                # Implicitní essence pro objekty
+                essence = "informatical"
+            else:
+                # Neznámý atribut - přeskočíme
+                continue
+            
+            # Uložíme atributy pro použití při vytváření uzlu
+            essence_of[name] = essence
+            affiliation_of[name] = affiliation
+            kind_of[name] = kind
+            
+            # Pokud uzel už existuje, aktualizujeme jeho atributy
+            it = by_label.get(name)
+            if it and isinstance(it, (ObjectItem, ProcessItem)):
+                it.essence = essence
+                it.affiliation = affiliation
+                it.update()
+            else:
+                # Vytvoříme nový objekt (defaultně objekt)
+                item = ObjectItem(QRectF(-NODE_W/2, -NODE_H/2, NODE_W, NODE_H), name, essence, affiliation)
+                item.setPos(next_obj_pos())
+                scene.addItem(item)
+                by_label[name] = item
+            continue
 
     # === DRUHÝ PRŮCHOD: Parsování ostatních OPL vět řádek po řádku ===
     for raw in text.splitlines():
@@ -334,8 +389,20 @@ def build_from_opl(app, text: str):
             continue
         
         # Přeskočíme definice (už byly zpracovány v prvním průchodu)
-        if RE_DEFINITION.match(line):
+        # POZNÁMKA: RE_DEFINITION_MINIMAL s velkým písmenem na začátku atributu bylo přeskočeno
+        # v prvním průchodu a má se zpracovat jako generalizace v druhém průchodu
+        if RE_DEFINITION.match(line) or RE_DEFINITION_SINGLE.match(line):
             continue
+        # Pro RE_DEFINITION_MINIMAL - přeskočíme jen pokud je atribut malými písmeny
+        # (tedy pokud to byla skutečná definice atributu, ne generalizace)
+        m_minimal = RE_DEFINITION_MINIMAL.match(line)
+        if m_minimal:
+            attr_raw = m_minimal.group("attr")
+            # Pokud atribut začíná malými písmeny, byla to definice atributu - přeskočíme
+            if attr_raw and not attr_raw[0].isupper():
+                continue
+            # Pokud atribut začíná velkým písmenem, bylo to přeskočeno v prvním průchodu
+            # a má se zpracovat jako generalizace - nepřeskočíme, pokračujeme v parsování
 
         # === Consumption - proces spotřebovává objekt (nebo objekt ve stavu) ===
         # Příklad: "Manufacturing consumes Material." nebo "Manufacturing consumes Material at state Raw."
@@ -504,6 +571,24 @@ def build_from_opl(app, text: str):
                 sup = get_or_create_object(super_name)
                 ensure_link(sub, sup, "generalization")
             continue
+        
+        # === Generalizace bez "a/an" - např. "Car is Vehicle." nebo "Car is Physical." ===
+        # RE_DEFINITION_MINIMAL zachytilo "Car is Physical." ale přeskočilo to v prvním průchodu
+        # protože Physical začíná velkým písmenem. Nyní to zpracujeme jako generalizaci.
+        m_minimal = RE_DEFINITION_MINIMAL.match(line)
+        if m_minimal:
+            attr_raw = m_minimal.group("attr")
+            # Pokud atribut začíná velkým písmenem, je to generalizace, ne definice atributu
+            if attr_raw and attr_raw[0].isupper():
+                # Zkontrolujeme, zda to není atribut (i s velkým písmenem)
+                attr_lower = attr_raw.lower()
+                if attr_lower in ("physical", "informatical", "systemic", "environmental"):
+                    # Je to atribut s velkým písmenem - vytvoříme generalizaci
+                    # (např. "Car is Physical." kde Physical je název objektu, ne atribut)
+                    sub = get_or_create_object(m_minimal.group("name"))
+                    sup = get_or_create_object(attr_raw)  # Použijeme surový atribut (s velkým písmenem)
+                    ensure_link(sub, sup, "generalization")
+                    continue
 
         # === Simple "is an instance of" - jednoduchá instantiace ===
         # Příklad: "John is an instance of Person."

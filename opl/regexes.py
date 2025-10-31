@@ -118,9 +118,11 @@ RE_CANBE = re.compile(
 # Definice s essence a affiliation - podporuje obě pořadí
 # Příklad: "A is a informatical and systemic object."
 # Příklad: "A is a systemic and informatical object."
+# Příklad: "A is informatical and systemic object." (bez a/an)
 # Příklad: "B is a physical and environmental process."
+# Poznámka: "a[n]?" je volitelné - může být s nebo bez "a/an"
 RE_DEFINITION = re.compile(
-    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+'
+    r'^\s*(?P<name>.+?)\s+is\s+(?:a[n]?\s+)?'
     r'(?:(?P<essence1>physical|informatical)\s+and\s+(?P<affiliation1>systemic|environmental)|'
     r'(?P<affiliation2>systemic|environmental)\s+and\s+(?P<essence2>physical|informatical))'
     r'\s+(?P<kind>object|process)\.+\s*$',
@@ -130,10 +132,22 @@ RE_DEFINITION = re.compile(
 # Definice s jedním atributem - essence nebo affiliation
 # Příklad: "Car is an informatical object." (affiliation=systemic implicitní)
 # Příklad: "Car is a systemic object." (essence=informatical implicitní pro objekty)
+# Příklad: "Car is informatical object." (bez a/an, ale s object/process)
 # Poznámka: Atributy musí být malými písmeny, jinak jde o generalizaci
+# Poznámka: "a[n]?" je volitelné - může být "Car is informatical object." nebo "Car is a informatical object."
 RE_DEFINITION_SINGLE = re.compile(
-    r'^\s*(?P<name>.+?)\s+is\s+a[n]?\s+'
+    r'^\s*(?P<name>.+?)\s+is\s+(?:a[n]?\s+)?'
     r'(?P<attr>physical|informatical|systemic|environmental)'
     r'\s+(?P<kind>object|process)\.+\s*$',
+    re.I
+)
+
+# Minimální definice s jedním atributem - bez "a/an" a bez "object/process" (defaultně objekt)
+# Příklad: "Raw Metal Bar is physical." (vytvoří objekt, affiliation=systemic implicitní)
+# Příklad: "Car is systemic." (vytvoří objekt, essence=informatical implicitní)
+# Poznámka: Atributy musí být malými písmeny, jinak jde o generalizaci. Defaultně vytváří objekt.
+RE_DEFINITION_MINIMAL = re.compile(
+    r'^\s*(?P<name>.+?)\s+is\s+'
+    r'(?P<attr>physical|informatical|systemic|environmental)\.+\s*$',
     re.I
 )

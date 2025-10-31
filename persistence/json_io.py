@@ -137,7 +137,7 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
             it = ProcessItem(
                 QRectF(-n["w"]/2, -n["h"]/2, n["w"], n["h"]), 
                 n["label"],
-                essence=n.get("essence", "physical"),
+                essence=n.get("essence", "informatical"),
                 affiliation=n.get("affiliation", "systemic")
             )
             it.node_id = n["id"]

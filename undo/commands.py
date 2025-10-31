@@ -539,7 +539,7 @@ class PasteItemsCommand(QUndoCommand):
             new_item = ProcessItem(
                 rect,
                 node_data["label"],
-                node_data.get("essence", "physical"),
+                node_data.get("essence", "informatical"),
                 node_data.get("affiliation", "systemic")
             )
             new_item.setPos(new_x, new_y)

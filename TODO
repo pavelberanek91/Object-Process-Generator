@@ -33,79 +33,116 @@
 [ ] vytvorit simulacni model pomoci asi Petriho siti
 ---
 
-# Test deklarace objektů a procesů s atributy a indiferentnosti vuci členu a/an a vuci poradi atributu
-[] Car is an informatical and systemic object.
-[] Car is an systemic and informatical object.
-[] Car is an informatical and environmental object.
-[] Car is an environmental and informatical object.
-[] Car is an physical and systemic object.
-[] Car is an systemic and physical object.
-[] Car is an physical and environmental object.
-[] Car is an environmental and physical object.
-[] Car is a informatical and systemic object.
-[] Car is a systemic and informatical object.
-[] Car is a informatical and environmental object.
-[] Car is a environmental and informatical object.
-[] Car is a physical and systemic object.
-[] Car is a systemic and physical object.
-[] Car is a physical and environmental object.
-[] Car is a environmental and physical object.
-[] Car is an informatical and systemic process.
-[] Car is an systemic and informatical  process.
-[] Car is an informatical and environmental process.
-[] Car is an environmental and informatical  process.
-[] Car is an physical and systemic process.
-[] Car is an systemic and physical process.
-[] Car is an physical and environmental process.
-[] Car is an environmental and physical process.
-[] Car is a informatical and systemic process.
-[] Car is a systemic and informatical process.
-[] Car is a informatical and environmental process.
-[] Car is a environmental and informatical process.
-[] Car is a physical and systemic process.
-[] Car is a systemic and physical process.
-[] Car is a physical and environmental process.
-[] Car is a environmental and physical process.
+# Test deklarace objektů a indiferenost vuci a/an/nic
+A1 is an informatical and systemic object.
+A2 is an systemic and informatical object.
+A3 is a informatical and systemic object.
+A4 is a systemic and informatical object.
+A5 is informatical and systemic object.
+A6 is systemic and informatical object.
+A7 is an informatical object.
+A8 is a informatical object.
+A9 is informatical object.
+A10 is an systemic object.
+A11 is a systemic object.
+A12 is systemic object.
+A13 is informatical.
+A14 is systemic.
 
-# Test deklarace s implicitní hodnotou atributů. 
-[] Car is an informatical object.
-[] Car is an physical object.
-[] Car is an environmental object.
-[] Car is an systemic object.
-[] Car is a informatical object.
-[] Car is a physical object.
-[] Car is a environmental object.
-[] Car is a systemic object.
-[] Car is an informatical process.
-[] Car is an physical process.
-[] Car is an environmental process.
-[] Car is an systemic process.
-[] Car is a informatical process.
-[] Car is a physical process.
-[] Car is a environmental process.
-[] Car is a systemic process.
+B1 is an informatical and environmental object.
+B2 is an environmental and informatical object.
+B3 is a informatical and environmental object.
+B4 is a environmental and informatical object.
+B5 is informatical and environmental object.
+B6 is environmental and informatical object.
+B7 is an environmental object.
+B8 is a environmental object.
+B9 is environmental object.
+B10 is environmental.
+
+C1 is an physical and systemic object.
+C2 is an systemic and physical object.
+C3 is a physical and systemic object.
+C4 is a systemic and physical object.
+C5 is physical and systemic object.
+C6 is systemic and physical object.
+C7 is an physical object.
+C8 is a physical object.
+C9 is physical object.
+C10 is physical.
+
+D1 is an physical and environmental object.
+D2 is an environmental and physical object.
+D3 is a physical and environmental object.
+D4 is a environmental and physical object.
+D5 is physical and environmental object.
+D6 is environmental and physical object.
+
+E1 is an informatical and systemic process.
+E2 is an systemic and informatical  process.
+E3 is a informatical and systemic process.
+E4 is a systemic and informatical process.
+E5 is informatical and systemic process.
+E6 is systemic and informatical process.
+E7 is an informatical process.
+E8 is a informatical process.
+E9 is informatical process.
+E10 is an systemic process.
+E11 is a systemic process.
+E12 is systemic process.
+
+F1 is an informatical and environmental process.
+F2 is an environmental and informatical process.
+F3 is a informatical and environmental process.
+F4 is a environmental and informatical process.
+F5 is informatical and environmental process.
+F6 is environmental and informatical process.
+F7 is an environmental process.
+F8 is a environmental process.
+F9 is environmental process.
+
+G1 is an physical and systemic process.
+G2 is an systemic and physical process.
+G3 is a physical and systemic process.
+G4 is a systemic and physical process.
+G5 is physical and systemic process.
+G6 is systemic and physical process.
+G7 is an physical process.
+G8 is a physical process.
+G9 is physical process.
+
+H1 is an physical and environmental process.
+H2 is an environmental and physical process.
+H3 is a physical and environmental process.
+H4 is a environmental and physical process.
+H5 is physical and environmental process.
+H6 is environmental and physical process.
+
+[x] funguje
 
 # Test deklarace vs. generalizace. Teď to má vytvořit vztah generalizace-specializace.
-[] Car is an Informatical object.
-[] Car is an Physical object.
-[] Car is an Environmental object.
-[] Car is an Systemic object.
-[] Car is a Informatical object.
-[] Car is a Physical object.
-[] Car is a Environmental object.
-[] Car is a Systemic object.
-[] Car is an Informatical process.
-[] Car is an Physical process.
-[] Car is an Environmental process.
-[] Car is an Systemic process.
-[] Car is a Informatical process.
-[] Car is a Physical process.
-[] Car is a Environmental process.
-[] Car is a Systemic process.
-[] Car is a Physical and environmental process.
-[] Car is a Environmental and physical process.
-[] Car is a Physical and Environmental process.
-[] Car is a Environmental and Physical process.
+Car is an Informatical object.
+Car is an Physical object.
+Car is an Environmental object.
+Car is an Systemic object.
+Car is a Informatical object.
+Car is a Physical object.
+Car is a Environmental object.
+Car is a Systemic object.
+Car is an Informatical process.
+Car is an Physical process.
+Car is an Environmental process.
+Car is an Systemic process.
+Car is a Informatical process.
+Car is a Physical process.
+Car is a Environmental process.
+Car is a Systemic process.
+Car is a Physical and environmental process.
+Car is a Environmental and physical process.
+Car is a Physical and Environmental process.
+Car is a Environmental and Physical process.
+
+[] funguje
 
 
 # Pr.1
@@ -127,6 +164,7 @@ Driver is an informatical and systemic object.
 Stopping is an informatical and systemic process.
 Stopping changes Velocity of Car from non-zero to zero.
 Stopping requires Braking System and Driver.
+
 [] Příklad funguje
 
 # Př.2
@@ -139,6 +177,7 @@ Machining requires Coolant.
 Machine Operator handles Machining.
 Part is a physical and systemic object.
 Part can be pre-tested or tested.
+
 [] Příklad funguje
 
 # Př. 3
@@ -149,6 +188,23 @@ Testing changes Part from pre-tested to tested.
 [] Příklad funguje
 
 # Př. 4
+Raw Metal Bar is a physical object.
+Raw Metal Bar can be pre-cut or cut.
+Machine Operator is a physical object.
+Coolant is a physical object.
+Machining is a physical process.
+Machining requires Coolant.
+Machine Operator handles Machining.
+Part is a physical object.
+Part can be pre-tested or tested.
+Testing is an environmental and physical process.
+Cutting changes Raw Metal Bar from pre-cut to cut.
+Machining consumes Raw Metal Bar.
+Machining yields Part at state pre-tested.
+Testing changes Part from pre-tested to tested.
+
+[] Příklad funguje
+
 Raw Metal Bar is physical.
 Raw Metal Bar can be pre-cut or cut.
 Machine Operator is physical.
@@ -162,7 +218,8 @@ Testing is environmental and physical.
 Cutting changes Raw Metal Bar from pre-cut to cut.
 Machining consumes Raw Metal Bar.
 Machining yields pre-tested Part.
-Testing changes Par from pre-tested to tested.
+Testing changes Part from pre-tested to tested.
+
 [] Příklad funguje
 
 # Př. 5
@@ -182,6 +239,7 @@ Delivery Preparing changes Package from on store to on delivery.
 Store handles Delivery Preparing.
 Customer handles Delivery Requesting.
 Delivery Requesting affects Store.
+
 [] Příklad funguje
 
 # Př. 6
