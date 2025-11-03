@@ -29,6 +29,7 @@ from ui.view import EditorView
 from ui.tabs import RenameableTabBar
 from ui.toolbar import ToolbarManager
 from ui.properties_panel import PropertiesPanel
+from ui.simulation_panel import SimulationPanel
 from ui.dialogs import show_opl_import_dialog, show_nl_to_opl_dialog, show_opl_preview_dialog
 from persistence.json_io import safe_base_filename
 from undo.commands import DeleteItemsCommand, ClearAllCommand, AddStateCommand, AddNodeCommand, PasteItemsCommand
@@ -84,6 +85,7 @@ class MainWindow(QMainWindow):
         # Nejprve vytvoř dokovací panely, aby na ně mohl toolbar/menu odkazovat
         self._init_properties_panel()
         self._init_hierarchy_panel()
+        self._init_simulation_panel()
         self._init_toolbars()
     
     def _init_tabs(self):
@@ -147,6 +149,13 @@ class MainWindow(QMainWindow):
         self.dock_hierarchy = ProcessHierarchyPanel(self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.dock_hierarchy)
         self.dock_hierarchy.refresh_tree()
+    
+    def _init_simulation_panel(self):
+        """Inicializuje simulační panel."""
+        self.dock_simulation = SimulationPanel(self)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.dock_simulation)
+        # Simulace panel bude umístěn hned po properties panelem (vertikálně rozdělený prostor)
+        self.splitDockWidget(self.dock_props, self.dock_simulation, Qt.Vertical)
     
     # ========== Pomocné metody ==========
     

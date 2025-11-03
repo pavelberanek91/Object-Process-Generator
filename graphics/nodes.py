@@ -78,6 +78,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Bílá výplň
     - Může obsahovat stavy (StateItem jako potomky)
     - Podporuje změnu velikosti pomocí resize handles
+    - Může zobrazovat token (černý kruh) pro simulaci (pouze pokud nemá stavy)
     """
     def __init__(self, rect: QRectF, label: str = "Object", essence: str = "informatical", affiliation: str = "systemic"):
         super().__init__(rect)
@@ -88,6 +89,9 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(0, 128, 0), 2))  # Tmavě zelený obrys
         self._init_resize()  # Přidá resize handles
+        
+        # Simulace: token v místě (pouze pro objekty bez stavů)
+        self.has_token = False
 
     def boundingRect(self) -> QRectF:
         m = 8
@@ -124,6 +128,13 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setFont(font)
         painter.setPen(Qt.black)
         painter.drawText(rect_for_text, Qt.AlignCenter, self.label)
+        
+        # Vykresli token (černý kruh) pokud má objekt token a nemá stavy
+        if self.has_token and not states:
+            token_rect = QRectF(self.rect().right() - 16, self.rect().top() + 4, 12, 12)
+            painter.setBrush(QBrush(Qt.black))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(token_rect)
 
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 2, Qt.DashLine)
@@ -276,6 +287,7 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Hnědý obrys (150, 75, 0)
     - Bílá výplň
     - Podporuje změnu velikosti pomocí resize handles
+    - Může zobrazovat token (černý kruh) pro simulaci
     """
     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
         super().__init__(rect, parent=parent_obj)
@@ -288,6 +300,9 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             QGraphicsItem.ItemIsSelectable |
             QGraphicsItem.ItemSendsGeometryChanges
         )
+        
+        # Simulace: token v místě
+        self.has_token = False
 
         # Registruje se k rodiči (potřeba pro redo commands a přesun s rodicem)
         if not hasattr(parent_obj, "_states"):
@@ -318,6 +333,13 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setFont(font)
         painter.setPen(Qt.black)
         painter.drawText(self.rect(), Qt.AlignCenter, self.label)
+        
+        # Vykresli token (černý kruh) pokud má místo token
+        if self.has_token:
+            token_rect = QRectF(self.rect().right() - 12, self.rect().top() + 2, 10, 10)
+            painter.setBrush(QBrush(Qt.black))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(token_rect)
 
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 1.5, Qt.DashLine)

@@ -252,6 +252,13 @@ class ToolbarManager:
             view_menu.addAction(act_p)
             self.main_window.addAction(act_p)
         
+        if hasattr(self.main_window, 'dock_simulation'):
+            act_s = self.main_window.dock_simulation.toggleViewAction()
+            act_s.setShortcut(QKeySequence("Ctrl+Shift+M"))  # M jako Model/Simulation
+            act_s.setText("Simulation")
+            view_menu.addAction(act_s)
+            self.main_window.addAction(act_s)
+        
         return view_menu
     
     def _add_mode_actions(self, tb: QToolBar):
