@@ -102,6 +102,9 @@ class PetriNet:
             
         # Pro C/E sítě: výstupní místa musí být volná (nemají token)
         output_places = self.get_output_places(transition_id)
+        # Pokud přechod nemá výstupní místa, nemůže proběhnout (pro C/E sítě)
+        if not output_places:
+            return False  # Přechod bez výstupů není validní pro C/E síť
         return all(not self.has_token(pid) for pid in output_places)
         
     def fire_transition(self, transition_id: str) -> bool:
@@ -134,8 +137,40 @@ class PetriNet:
         return [tid for tid in self.transitions.keys() if self.can_fire(tid)]
         
     def get_blocked_transitions(self) -> List[str]:
-        """Vrátí seznam ID blokovaných přechodů (aktivní, ale nemohou proběhnout)."""
+        """Vrátí seznam ID blokovaných přechodů (aktivní, ale nemohou proběhnout kvůli výstupům)."""
         enabled = set(self.get_enabled_transitions())
         fireable = set(self.get_fireable_transitions())
-        return list(enabled - fireable)
+        blocked = list(enabled - fireable)
+        
+        print(f"[PetriNet.get_blocked_transitions] Enabled: {enabled}")
+        print(f"[PetriNet.get_blocked_transitions] Fireable: {fireable}")
+        print(f"[PetriNet.get_blocked_transitions] Blocked: {blocked}")
+        
+        if blocked:
+            for tid in blocked:
+                transition = self.transitions.get(tid)
+                output_places = self.get_output_places(tid)
+                output_tokens = [self.has_token(pid) for pid in output_places]
+                input_places = self.get_input_places(tid)
+                input_tokens = [self.has_token(pid) for pid in input_places]
+                print(f"[PetriNet] Blocked transition {transition.label if transition else tid}:")
+                print(f"  Input places: {input_places} with tokens: {input_tokens}")
+                print(f"  Output places: {output_places} with tokens: {output_tokens}")
+                print(f"  is_enabled: {self.is_enabled(tid)}")
+                print(f"  can_fire: {self.can_fire(tid)}")
+        return blocked
+    
+    def get_waiting_transitions(self) -> List[str]:
+        """Vrátí seznam ID přechodů, které čekají na vstupy (nejsou aktivní)."""
+        all_transitions = set(self.transitions.keys())
+        enabled = set(self.get_enabled_transitions())
+        waiting = list(all_transitions - enabled)
+        
+        # Filtrujeme jen ty, které mají alespoň jeden vstup (jinak jsou nevalidní)
+        waiting_with_inputs = [
+            tid for tid in waiting
+            if self.get_input_places(tid)
+        ]
+        
+        return waiting_with_inputs
 

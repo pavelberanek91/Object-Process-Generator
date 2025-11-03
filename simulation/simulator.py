@@ -159,4 +159,10 @@ class SimulationEngine(QObject):
         if not self.net:
             return []
         return self.net.get_blocked_transitions()
+    
+    def get_waiting_transitions(self) -> List[str]:
+        """Vrátí seznam ID přechodů, které čekají na vstupy."""
+        if not self.net:
+            return []
+        return self.net.get_waiting_transitions()
 

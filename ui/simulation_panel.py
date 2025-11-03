@@ -81,16 +81,24 @@ class SimulationPanel(QDockWidget):
         self.group_tokens.setLayout(tokens_layout)
         layout.addWidget(self.group_tokens)
         
-        # Seznam aktivních přechodů
-        self.lbl_enabled = QLabel("Enabled transitions:", self)
+        # Seznam aktivních přechodů (ty, které mohou proběhnout)
+        self.lbl_enabled = QLabel("Ready to fire (green):", self)
         layout.addWidget(self.lbl_enabled)
         
         self.list_enabled = QListWidget(self)
         self.list_enabled.setMaximumHeight(100)
         layout.addWidget(self.list_enabled)
         
+        # Seznam čekajících přechodů (čekají na vstupy)
+        self.lbl_waiting = QLabel("Waiting for inputs (yellow):", self)
+        layout.addWidget(self.lbl_waiting)
+        
+        self.list_waiting = QListWidget(self)
+        self.list_waiting.setMaximumHeight(100)
+        layout.addWidget(self.list_waiting)
+        
         # Seznam blokovaných přechodů (procesní zádrhely)
-        self.lbl_blocked = QLabel("Blocked transitions (bottlenecks):", self)
+        self.lbl_blocked = QLabel("Blocked transitions (bottlenecks - red):", self)
         layout.addWidget(self.lbl_blocked)
         
         self.list_blocked = QListWidget(self)
@@ -204,28 +212,53 @@ class SimulationPanel(QDockWidget):
             self.lbl_status.setText(f"Status: Fired {transition.label}")
             
     def _update_lists(self):
-        """Aktualizuje seznamy aktivních a blokovaných přechodů."""
+        """Aktualizuje seznamy aktivních, čekajících a blokovaných přechodů."""
         if not self.simulator or not self.simulator.net:
             return
             
-        # Aktualizuj seznam aktivních přechodů
-        self.list_enabled.clear()
+        # Získáme všechny seznamy
         enabled = self.simulator.get_enabled_transitions()
-        for tid in enabled:
+        fireable = self.simulator.get_fireable_transitions()
+        blocked = self.simulator.get_blocked_transitions()
+        waiting = self.simulator.get_waiting_transitions()
+        
+        print(f"[UI] Enabled transitions: {enabled}")
+        print(f"[UI] Fireable transitions: {fireable}")
+        print(f"[UI] Blocked transitions: {blocked}")
+        print(f"[UI] Waiting transitions: {waiting}")
+        
+        # Aktualizuj seznam aktivních přechodů (jen ty, které mohou proběhnout)
+        self.list_enabled.clear()
+        for tid in fireable:
             transition = self.simulator.net.transitions.get(tid)
             if transition:
                 item = QListWidgetItem(transition.label)
+                item.setForeground(Qt.green)  # Zeleně pro ready-to-fire
                 self.list_enabled.addItem(item)
+        
+        # Aktualizuj seznam čekajících přechodů (čekají na vstupy)
+        self.list_waiting.clear()
+        for tid in waiting:
+            transition = self.simulator.net.transitions.get(tid)
+            if transition:
+                item = QListWidgetItem(transition.label)
+                item.setForeground(Qt.darkYellow)  # Žlutě pro čekající
+                self.list_waiting.addItem(item)
                 
         # Aktualizuj seznam blokovaných přechodů (procesní zádrhely)
         self.list_blocked.clear()
-        blocked = self.simulator.get_blocked_transitions()
         for tid in blocked:
             transition = self.simulator.net.transitions.get(tid)
             if transition:
                 item = QListWidgetItem(transition.label)
                 item.setForeground(Qt.red)  # Červeně pro zádrhely
                 self.list_blocked.addItem(item)
+                
+        # Pokud není žádný blokovaný, ale jsou enabled, zobrazíme informaci
+        if not blocked and enabled:
+            print(f"[UI] All enabled transitions are fireable (no bottlenecks)")
+        elif not blocked and not enabled:
+            print(f"[UI] No enabled transitions")
     
     def _build_tokens_list(self):
         """Vytvoří seznam checkboxů pro nastavení počátečních tokenů."""
@@ -270,6 +303,9 @@ class SimulationPanel(QDockWidget):
         marking = self.simulator.get_marking()
         token_count = sum(1 for has_token in marking.values() if has_token)
         self.lbl_status.setText(f"Status: {token_count} token(s) set")
+        
+        # Aktualizujeme seznamy přechodů (aby se zobrazily blokované přechody)
+        self._update_lists()
     
     def _update_token_checkboxes(self):
         """Aktualizuje checkboxy podle aktuálního označení sítě."""
