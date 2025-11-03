@@ -33,19 +33,10 @@ class SimulationPanel(QDockWidget):
         widget = QWidget(self)
         layout = QVBoxLayout(widget)
         
-        # Tlačítka ovládání
-        controls_layout = QHBoxLayout()
-        
-        self.btn_build = QPushButton("Build Net", self)
-        self.btn_build.clicked.connect(self._on_build_net)
-        controls_layout.addWidget(self.btn_build)
-        
+        # Tlačítko Reset (build + reset)
         self.btn_reset = QPushButton("Reset", self)
         self.btn_reset.clicked.connect(self._on_reset)
-        self.btn_reset.setEnabled(False)
-        controls_layout.addWidget(self.btn_reset)
-        
-        layout.addLayout(controls_layout)
+        layout.addWidget(self.btn_reset)
         
         # Tlačítka pro simulaci
         sim_layout = QHBoxLayout()
@@ -87,11 +78,6 @@ class SimulationPanel(QDockWidget):
         
         tokens_layout.addWidget(self.scroll_tokens)
         
-        self.btn_set_tokens = QPushButton("Set Initial Tokens", self)
-        self.btn_set_tokens.clicked.connect(self._on_set_tokens)
-        self.btn_set_tokens.setEnabled(False)
-        tokens_layout.addWidget(self.btn_set_tokens)
-        
         self.group_tokens.setLayout(tokens_layout)
         layout.addWidget(self.group_tokens)
         
@@ -122,9 +108,11 @@ class SimulationPanel(QDockWidget):
         if simulator:
             simulator.marking_changed.connect(self._on_marking_changed)
             simulator.transition_fired.connect(self._on_transition_fired)
+            # Vytvoříme vlastní wrapper pro emitování signálu
+            self.marking_changed = lambda: simulator.marking_changed.emit()
             
-    def _on_build_net(self):
-        """Vytvoří Petriho síť z diagramu."""
+    def _on_reset(self):
+        """Vytvoří Petriho síť z diagramu a resetuje simulaci."""
         if not self.main_window or not self.main_window.scene:
             return
             
@@ -132,21 +120,22 @@ class SimulationPanel(QDockWidget):
             self.simulator = SimulationEngine(self.main_window.scene)
             self.set_simulator(self.simulator)
             
+        # Vytvoří nebo obnoví síť
         self.simulator.build_net()
         self.lbl_status.setText("Status: Built")
-        self.btn_reset.setEnabled(True)
         self.btn_step.setEnabled(True)
         self.btn_play.setEnabled(True)
-        self.btn_set_tokens.setEnabled(True)
         self._build_tokens_list()
-        self._update_lists()
         
-    def _on_reset(self):
-        """Resetuje simulaci."""
-        if self.simulator:
-            self.simulator.reset()
-            self._update_token_checkboxes()
-            self._update_lists()
+        # Resetuje tokeny na prázdné
+        if self.simulator.net:
+            for place_id in self.simulator.net.places.keys():
+                self.simulator.net.set_token(place_id, False)
+            if hasattr(self, 'marking_changed'):
+                self.marking_changed()
+        
+        self._update_token_checkboxes()
+        self._update_lists()
             
     def _on_step(self):
         """Provede jeden krok simulace."""
@@ -196,9 +185,17 @@ class SimulationPanel(QDockWidget):
                     if item.scene():
                         item.scene().update(item.boundingRect())
                     item.update()  # Překresli
-                    
-        self._update_token_checkboxes()
+        
+        # Aktualizujeme checkboxy (bez emitování signálu, aby se nezacyklil)
+        self._update_token_checkboxes_silent()
         self._update_lists()
+    
+    def marking_changed(self):
+        """Wrapper pro emitování signálu marking_changed."""
+        # Tato metoda se volá místo přímého emitování signálu
+        # aby se zabránilo zacyklení
+        if self.simulator:
+            self.simulator.marking_changed.emit()
         
     def _on_transition_fired(self, transition_id: str):
         """Aktualizuje UI při provedení přechodu."""
@@ -245,33 +242,49 @@ class SimulationPanel(QDockWidget):
         for place_id, place in sorted(self.simulator.net.places.items(), key=lambda x: x[1].label):
             checkbox = QCheckBox(place.label, self.tokens_widget)
             checkbox.setChecked(False)  # Výchozí: žádný token
+            # Připojíme signál pro automatické nastavení tokenu při změně
+            checkbox.stateChanged.connect(
+                lambda checked, pid=place_id: self._on_token_checkbox_changed(pid, checked)
+            )
             self.token_checkboxes[place_id] = checkbox
             self.tokens_layout.insertWidget(self.tokens_layout.count() - 1, checkbox)  # Před stretch
             
         self.group_tokens.setVisible(len(self.token_checkboxes) > 0)
-        
-    def _on_set_tokens(self):
-        """Nastaví počáteční tokeny podle checkboxů."""
+    
+    def _on_token_checkbox_changed(self, place_id: str, checked: int):
+        """Automaticky nastaví token při změně checkboxu."""
         if not self.simulator or not self.simulator.net:
             return
             
-        # Zjistíme, která místa mají být označena
-        place_ids_with_tokens = [
-            place_id for place_id, checkbox in self.token_checkboxes.items()
-            if checkbox.isChecked()
-        ]
+        # checked je Qt.Checked (2) nebo Qt.Unchecked (0)
+        has_token = (checked == 2)
         
-        # Nastavíme tokeny
-        self.simulator.set_initial_tokens(place_ids_with_tokens)
-        self.lbl_status.setText(f"Status: Tokens set ({len(place_ids_with_tokens)} places)")
+        # Nastavíme token v místě
+        self.simulator.net.set_token(place_id, has_token)
+        
+        # Aktualizujeme vizualizaci
+        if hasattr(self, 'marking_changed'):
+            self.marking_changed()
+        
+        # Aktualizujeme status
+        marking = self.simulator.get_marking()
+        token_count = sum(1 for has_token in marking.values() if has_token)
+        self.lbl_status.setText(f"Status: {token_count} token(s) set")
     
     def _update_token_checkboxes(self):
         """Aktualizuje checkboxy podle aktuálního označení sítě."""
+        self._update_token_checkboxes_silent()
+    
+    def _update_token_checkboxes_silent(self):
+        """Aktualizuje checkboxy bez emitování signálů (aby se nezacyklil)."""
         if not self.simulator or not self.simulator.net:
             return
             
         marking = self.simulator.get_marking()
         for place_id, checkbox in self.token_checkboxes.items():
             has_token = marking.get(place_id, False)
+            # Dočasně odpojíme signál, aby se nezacyklil
+            checkbox.blockSignals(True)
             checkbox.setChecked(has_token)
+            checkbox.blockSignals(False)
 
