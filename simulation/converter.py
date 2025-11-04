@@ -23,9 +23,15 @@ def build_petri_net_from_scene(scene) -> PetriNet:
     
     # Projdi všechny uzly ve scéně
     # POZNÁMKA: scene.items() vrací všechny items včetně child items
+    print(f"[Converter] Scanning scene with {len(scene.items())} items")
+    item_count = 0
     for item in scene.items():
         if isinstance(item, ObjectItem):
+            if not hasattr(item, 'node_id') or not item.node_id:
+                print(f"[Converter] WARNING: ObjectItem '{item.label}' has no node_id")
+                continue
             objects[item.node_id] = item
+            item_count += 1
             # Inicializuj prázdný slovník pro stavy, pokud ještě neexistuje
             if item.node_id not in states_by_object:
                 states_by_object[item.node_id] = {}
@@ -33,16 +39,26 @@ def build_petri_net_from_scene(scene) -> PetriNet:
             for child in item.childItems():
                 if isinstance(child, StateItem):
                     states_by_object[item.node_id][child.label] = child
+                    print(f"[Converter] Found state '{child.label}' for object '{item.label}'")
         elif isinstance(item, StateItem):
             # StateItem může být také top-level item (např. po undo/redo)
             parent = item.parentItem()
             if parent and isinstance(parent, ObjectItem):
+                if not hasattr(parent, 'node_id') or not parent.node_id:
+                    print(f"[Converter] WARNING: Parent ObjectItem has no node_id")
+                    continue
                 obj_id = parent.node_id
                 if obj_id not in states_by_object:
                     states_by_object[obj_id] = {}
                 states_by_object[obj_id][item.label] = item
         elif isinstance(item, ProcessItem):
+            if not hasattr(item, 'node_id') or not item.node_id:
+                print(f"[Converter] WARNING: ProcessItem '{item.label}' has no node_id")
+                continue
             processes[item.node_id] = item
+            item_count += 1
+    
+    print(f"[Converter] Found {len(objects)} objects, {len(processes)} processes, {sum(len(states) for states in states_by_object.values())} states")
     
     # Vytvoř místa pro každý objekt (místo pro každý stav nebo obecné místo)
     place_map: Dict[str, str] = {}  # (object_id, state_label?) -> place_id
@@ -221,6 +237,12 @@ def build_petri_net_from_scene(scene) -> PetriNet:
     # Musíme najít tyto páry a zajistit, že jsou správně zpracovány
     # (Poznámka: V OPL parseru se "changes" vytváří jako dva linky - consumption a result)
     # Pro jednoduchost necháme současnou logiku - consumption a result jsou již správně zpracovány výše
+    
+    print(f"[Converter] Petri net created: {len(net.places)} places, {len(net.transitions)} transitions, {len(net.arcs)} arcs")
+    if len(net.places) == 0:
+        print("[Converter] WARNING: No places created! Check if objects are in the scene with proper node_id.")
+    if len(net.transitions) == 0:
+        print("[Converter] WARNING: No transitions created! Check if processes are in the scene with proper node_id.")
     
     return net
 

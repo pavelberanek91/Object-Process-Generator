@@ -1,7 +1,9 @@
 """Panel pro ovládání simulace OPM diagramu."""
 from __future__ import annotations
 from typing import Optional, Dict, List, Tuple
-from PySide6.QtCore import Qt
+import io
+from PySide6.QtCore import Qt, QTimer, QRectF, QBuffer, QIODevice
+from PySide6.QtGui import QImage, QPainter
 from PySide6.QtWidgets import (
     QDockWidget,
     QWidget,
@@ -14,6 +16,9 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QScrollArea,
     QGroupBox,
+    QSpinBox,
+    QFileDialog,
+    QMessageBox,
 )
 from simulation.simulator import SimulationEngine
 from simulation.petri_net import Place
@@ -58,6 +63,24 @@ class SimulationPanel(QDockWidget):
         sim_layout.addWidget(self.btn_pause)
         
         layout.addLayout(sim_layout)
+        
+        # Delay mezi kroky simulace (pro export GIF)
+        delay_layout = QHBoxLayout()
+        delay_layout.addWidget(QLabel("Delay (ms):", self))
+        self.spin_delay = QSpinBox(self)
+        self.spin_delay.setMinimum(50)
+        self.spin_delay.setMaximum(5000)
+        self.spin_delay.setValue(500)
+        self.spin_delay.setSuffix(" ms")
+        self.spin_delay.setToolTip("Delay between simulation steps for GIF export")
+        delay_layout.addWidget(self.spin_delay)
+        layout.addLayout(delay_layout)
+        
+        # Tlačítko pro export simulace jako GIF
+        self.btn_export_gif = QPushButton("Export Simulation as GIF", self)
+        self.btn_export_gif.clicked.connect(self._on_export_gif)
+        self.btn_export_gif.setEnabled(False)
+        layout.addWidget(self.btn_export_gif)
         
         # Informace o stavu
         self.lbl_status = QLabel("Status: Not built", self)
@@ -123,17 +146,34 @@ class SimulationPanel(QDockWidget):
     def _on_reset(self):
         """Vytvoří Petriho síť z diagramu a resetuje simulaci."""
         if not self.main_window or not self.main_window.scene:
+            print("[UI] WARNING: Cannot reset - no main_window or scene")
             return
-            
+        
+        # Vždy aktualizujeme referenci na scénu (může se změnit po importu JSONu)
         if not self.simulator:
             self.simulator = SimulationEngine(self.main_window.scene)
             self.set_simulator(self.simulator)
-            
+        else:
+            # Aktualizujeme referenci na scénu (může se změnit po importu)
+            self.simulator.scene = self.main_window.scene
+        
+        print(f"[UI] Resetting simulation. Scene has {len(self.main_window.scene.items())} items")
+        
         # Vytvoří nebo obnoví síť
         self.simulator.build_net()
+        
+        if not self.simulator.net:
+            print("[UI] ERROR: Failed to build Petri net")
+            self.lbl_status.setText("Status: Build failed")
+            return
+        
+        print(f"[UI] Petri net built: {len(self.simulator.net.places)} places, {len(self.simulator.net.transitions)} transitions")
+        print(f"[UI] Place mapping: {len(self.simulator.place_to_items)} mappings")
+        
         self.lbl_status.setText("Status: Built")
         self.btn_step.setEnabled(True)
         self.btn_play.setEnabled(True)
+        self.btn_export_gif.setEnabled(True)
         self._build_tokens_list()
         
         # Resetuje tokeny na prázdné
@@ -372,4 +412,195 @@ class SimulationPanel(QDockWidget):
             checkbox.blockSignals(True)
             checkbox.setChecked(has_token)
             checkbox.blockSignals(False)
+    
+    def _on_export_gif(self):
+        """Exportuje simulaci jako GIF animaci."""
+        if not self.simulator or not self.simulator.net:
+            QMessageBox.warning(self, "Export Error", "Simulation not built. Please press Reset first.")
+            return
+        
+        # Vybereme soubor pro uložení
+        from persistence.json_io import safe_base_filename
+        base = safe_base_filename(self.main_window._current_tab_title() if hasattr(self.main_window, '_current_tab_title') else None)
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Simulation GIF", f"{base}_simulation.gif", "GIF (*.gif)"
+        )
+        if not path:
+            return
+        
+        # Uložíme počáteční stav
+        initial_marking = self.simulator.get_marking().copy()
+        
+        # Získáme delay mezi kroky
+        delay_ms = self.spin_delay.value()
+        delay_seconds = delay_ms / 1000.0
+        
+        try:
+            # Zkusíme použít imageio pro vytvoření GIF
+            try:
+                import imageio
+                use_imageio = True
+            except ImportError:
+                # Zkusíme pillow
+                try:
+                    from PIL import Image
+                    use_imageio = False
+                except ImportError:
+                    QMessageBox.warning(
+                        self, "Export Error",
+                        "Please install imageio or pillow:\n"
+                        "pip install imageio\n"
+                        "or\n"
+                        "pip install pillow"
+                    )
+                    return
+            
+            # Získáme scénu pro export
+            if not self.main_window or not hasattr(self.main_window, 'scene'):
+                QMessageBox.warning(self, "Export Error", "Cannot access scene. Please ensure the main window is available.")
+                return
+            
+            scene = self.main_window.scene
+            rb = scene.itemsBoundingRect().adjusted(-20, -20, 20, 20)
+            
+            # Vypneme mřížku pro export
+            original_grid_state = scene._draw_grid
+            scene.set_draw_grid(False)
+            
+            frames = []
+            max_steps = 100  # Maximální počet kroků pro zabránění zacyklení
+            
+            self.lbl_status.setText("Status: Recording...")
+            self.btn_export_gif.setEnabled(False)
+            
+            # Uložíme první snímek (počáteční stav)
+            img = self._capture_frame(scene, rb)
+            frames.append(img)
+            
+            # Provedeme simulaci krok za krokem
+            step_count = 0
+            while step_count < max_steps:
+                # Provedeme jeden krok
+                result = self.simulator.step()
+                if not result:
+                    # Žádný další krok není možný
+                    break
+                
+                # Aktualizujeme UI
+                from PySide6.QtWidgets import QApplication
+                QApplication.processEvents()
+                
+                # Počkáme na delay (pro vizualizaci)
+                from PySide6.QtCore import QEventLoop, QTimer as QtTimer
+                loop = QEventLoop()
+                QtTimer.singleShot(delay_ms, loop.quit)
+                loop.exec()
+                
+                # Uložíme snímek
+                img = self._capture_frame(scene, rb)
+                frames.append(img)
+                step_count += 1
+                
+                # Aktualizujeme UI znovu
+                QApplication.processEvents()
+            
+            # Vrátíme počáteční stav
+            for place_id, has_token in initial_marking.items():
+                self.simulator.net.set_token(place_id, has_token)
+            self.simulator.marking_changed.emit()
+            
+            # Vrátíme původní stav mřížky
+            scene.set_draw_grid(original_grid_state)
+            
+            # Vytvoříme GIF
+            import numpy as np
+            if use_imageio:
+                # imageio - očekává numpy arrays
+                imageio.mimsave(path, frames, duration=delay_seconds, loop=0)
+            else:
+                # pillow - očekává PIL Images
+                if frames:
+                    # Převod numpy arrays na PIL Images
+                    from PIL import Image
+                    pil_frames = [Image.fromarray(frame) if isinstance(frame, np.ndarray) else frame for frame in frames]
+                    
+                    if pil_frames:
+                        pil_frames[0].save(
+                            path,
+                            save_all=True,
+                            append_images=pil_frames[1:] if len(pil_frames) > 1 else [],
+                            duration=delay_ms,
+                            loop=0
+                        )
+            
+            QMessageBox.information(
+                self, "Export Complete",
+                f"Simulation exported as GIF:\n{path}\n\n{len(frames)} frames recorded."
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Export Error", f"Failed to export GIF:\n{str(e)}")
+            # Vrátíme počáteční stav i při chybě
+            if self.simulator and self.simulator.net:
+                for place_id, has_token in initial_marking.items():
+                    self.simulator.net.set_token(place_id, has_token)
+                self.simulator.marking_changed.emit()
+            if hasattr(scene, 'set_draw_grid'):
+                scene.set_draw_grid(original_grid_state)
+        finally:
+            self.lbl_status.setText("Status: Export complete")
+            self.btn_export_gif.setEnabled(True)
+    
+    def _capture_frame(self, scene, bounding_rect):
+        """Zachytí jeden snímek scény jako QImage a převede na formát pro GIF."""
+        img = QImage(int(bounding_rect.width()), int(bounding_rect.height()), QImage.Format_ARGB32_Premultiplied)
+        img.fill(0x00FFFFFF)
+        painter = QPainter(img)
+        scene.render(painter, target=QRectF(0, 0, bounding_rect.width(), bounding_rect.height()), source=bounding_rect)
+        painter.end()
+        
+        # Převedeme QImage na formát použitelný pro GIF
+        # QImage -> RGB format
+        img_rgb = img.convertToFormat(QImage.Format_RGB888)
+        width = img_rgb.width()
+        height = img_rgb.height()
+        
+        # Převedeme na numpy array pomocí bytes
+        import numpy as np
+        
+        # Převedeme QImage na numpy array pomocí buffer metody
+        # (nejspolehlivější způsob)
+        buffer = QBuffer()
+        buffer.open(QIODevice.WriteOnly)
+        img_rgb.save(buffer, "PNG")
+        buffer.close()
+        
+        # Načteme data pomocí Pillow nebo imageio
+        try:
+            from PIL import Image
+            pil_img = Image.open(io.BytesIO(buffer.data()))
+            arr = np.array(pil_img)
+            # Pokud je to RGBA, převedeme na RGB
+            if arr.shape[2] == 4:
+                arr = arr[:, :, :3]
+        except ImportError:
+            # Pokud není PIL, použijeme imageio
+            try:
+                import imageio
+                arr = imageio.imread(io.BytesIO(buffer.data()))
+                # Pokud je to RGBA, převedeme na RGB
+                if len(arr.shape) == 3 and arr.shape[2] == 4:
+                    arr = arr[:, :, :3]
+            except ImportError:
+                # Fallback: přímá konverze z QImage (méně spolehlivá)
+                byte_data = img_rgb.bits()
+                if byte_data:
+                    byte_data.setsize(img_rgb.byteCount())
+                    arr = np.frombuffer(byte_data, dtype=np.uint8, count=width * height * 3)
+                    arr = arr.reshape((height, width, 3))
+                else:
+                    raise RuntimeError("Cannot convert QImage to numpy array")
+        
+        # Vracíme numpy array (použijeme ho pro imageio i pillow)
+        return arr
 
