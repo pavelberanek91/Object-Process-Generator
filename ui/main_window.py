@@ -916,6 +916,16 @@ class MainWindow(QMainWindow):
         # Procedurální vazby - zatím bez omezení
         return True, ""
 
+    def toggle_token(self, item):
+        """Přepne token na objektu nebo stavu."""
+        from graphics.nodes import ObjectItem, StateItem
+        if not isinstance(item, (ObjectItem, StateItem)):
+            return
+        
+        from undo.commands import ToggleTokenCommand
+        cmd = ToggleTokenCommand(item, item.has_token)
+        self.push_cmd(cmd)
+    
     def handle_link_click(self, pos: QPointF):
         """Zpracuje kliknutí v režimu přidávání linku."""
         item = self.scene.itemAt(pos, self.view.transform())
@@ -1093,6 +1103,26 @@ class MainWindow(QMainWindow):
             self.set_mode(Mode.ADD_LINK)
             event.accept()
             return
+        
+        if event.key() == Qt.Key_T:
+            # T = Toggle token na vybraných objektech/stavech
+            sel = self.scene.selectedItems()
+            from graphics.nodes import ObjectItem, StateItem
+            items_to_toggle = [it for it in sel if isinstance(it, (ObjectItem, StateItem))]
+            if items_to_toggle:
+                for item in items_to_toggle:
+                    self.toggle_token(item)
+                event.accept()
+                return
+            # Pokud není nic vybrané, klikněme na prvek pod kurzorem
+            if self.mode == Mode.SELECT:
+                cursor_pos = self.view.mapFromGlobal(self.view.cursor().pos())
+                scene_pos = self.view.mapToScene(cursor_pos)
+                item = self.scene.itemAt(scene_pos, self.view.transform())
+                if isinstance(item, (ObjectItem, StateItem)):
+                    self.toggle_token(item)
+                    event.accept()
+                    return
         
         # Rychlé přepínání typu linku čísly
         if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5):

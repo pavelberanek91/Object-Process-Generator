@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QComboBox,
     QPushButton,
+    QCheckBox,
 )
 from constants import LINK_TYPES
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
@@ -84,6 +85,12 @@ class PropertiesPanel(QDockWidget):
         form.addRow(self.lbl_card_src, self.ed_card_src)
         form.addRow(self.lbl_card_dst, self.ed_card_dst)
 
+        # Token checkbox
+        self.lbl_token = QLabel("Token", self.panel_props)
+        self.chk_token = QCheckBox(self.panel_props)
+        self.chk_token.stateChanged.connect(self._on_token_changed)
+        form.addRow(self.lbl_token, self.chk_token)
+
         # OPL tlačítko odstraněno - přesunuto do OPL menu v toolbaru jako "Export OPL"
 
         self.panel_props.setLayout(form)
@@ -108,9 +115,36 @@ class PropertiesPanel(QDockWidget):
         self.ed_card_dst.hide()
         self.lbl_card_src.hide()
         self.lbl_card_dst.hide()
+        self.lbl_token.hide()
+        self.chk_token.hide()
 
-        if isinstance(it, (ObjectItem, ProcessItem)):
-            # Objekt / proces → má label + essence + affiliation
+        if isinstance(it, ObjectItem):
+            # Objekt → má label + essence + affiliation + token
+            print(f"[Properties] Showing properties for {it.label}")
+            self.lbl_label.show()
+            self.ed_label.show()
+            self.ed_label.setEnabled(True)
+            self.ed_label.setText(it.label)
+            
+            self.lbl_essence.show()
+            self.cmb_essence.show()
+            self.cmb_essence.setCurrentText(it.essence)
+            
+            self.lbl_affiliation.show()
+            self.cmb_affiliation.show()
+            self.cmb_affiliation.setCurrentText(it.affiliation)
+            
+            # Token jen pro objekty bez stavů
+            states = [ch for ch in it.childItems() if isinstance(ch, StateItem)]
+            if not states:
+                self.lbl_token.show()
+                self.chk_token.show()
+                self.chk_token.setChecked(getattr(it, 'has_token', False))
+            else:
+                self.lbl_token.hide()
+                self.chk_token.hide()
+        elif isinstance(it, ProcessItem):
+            # Proces → má label + essence + affiliation (bez tokenu)
             print(f"[Properties] Showing properties for {it.label}")
             self.lbl_label.show()
             self.ed_label.show()
@@ -125,12 +159,16 @@ class PropertiesPanel(QDockWidget):
             self.cmb_affiliation.show()
             self.cmb_affiliation.setCurrentText(it.affiliation)
         elif isinstance(it, StateItem):
-            # Stav → má jen label
+            # Stav → má label + token
             print(f"[Properties] Showing properties for state {it.label}")
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
             self.ed_label.setText(it.label)
+            
+            self.lbl_token.show()
+            self.chk_token.show()
+            self.chk_token.setChecked(getattr(it, 'has_token', False))
         elif isinstance(it, LinkItem):
             # Link → má label + typ + kardinalitu
             print(f"[Properties] Showing properties for link")
@@ -230,6 +268,22 @@ class PropertiesPanel(QDockWidget):
         if isinstance(it, (ObjectItem, ProcessItem)):
             it.affiliation = text
             it.update()
+    
+    def _on_token_changed(self, checked: int):
+        """Handler pro změnu tokenu."""
+        from PySide6.QtCore import Qt
+        it = self._get_selected_item()
+        from graphics.nodes import ObjectItem, StateItem
+        if isinstance(it, (ObjectItem, StateItem)):
+            # Qt.Checked je 2, Qt.Unchecked je 0
+            has_token = (checked == Qt.Checked or checked == 2)
+            current_token = getattr(it, 'has_token', False)
+            if has_token != current_token:
+                # Použijeme undo command pro toggle tokenu
+                from undo.commands import ToggleTokenCommand
+                if self.main_window:
+                    cmd = ToggleTokenCommand(it, current_token)
+                    self.main_window.push_cmd(cmd)
     
     def _on_link_type_changed(self, text: str):
         """Handler pro změnu typu linku."""

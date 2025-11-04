@@ -323,6 +323,59 @@ class SetLabelCommand(QUndoCommand):
                             main_win.tabs.setTabText(i, f"🔍 {new_label}")
 
 # ---------- Change link type ----------
+class ToggleTokenCommand(QUndoCommand):
+    """Příkaz pro přepnutí tokenu na objektu nebo stavu."""
+    def __init__(self, item, old_value: bool):
+        super().__init__("Toggle Token")
+        self.item = item
+        self.old_value = old_value
+        self.new_value = not old_value
+
+    def _sync_to_petri_net(self):
+        """Synchronizuje změnu tokenu do Petriho sítě."""
+        from ui.main_window import MainWindow
+        main_win = MainWindow.instance()
+        if not main_win:
+            return
+        
+        # Najdi simulation panel
+        if not hasattr(main_win, 'dock_simulation'):
+            return
+        
+        sim_panel = main_win.dock_simulation
+        if not sim_panel or not sim_panel.simulator or not sim_panel.simulator.net:
+            return
+        
+        # Najdi place_id pro tento item
+        place_id = None
+        for pid, items in sim_panel.simulator.place_to_items.items():
+            if self.item in items:
+                place_id = pid
+                break
+        
+        if place_id:
+            # Aktualizuj Petriho síť
+            sim_panel.simulator.net.set_token(place_id, self.item.has_token)
+            # Vyvolá aktualizaci checkboxů a seznamů
+            sim_panel.simulator.marking_changed.emit()
+
+    def redo(self):
+        self.item.has_token = self.new_value
+        if self.item.scene():
+            scene_rect = self.item.mapToScene(self.item.boundingRect()).boundingRect()
+            self.item.scene().update(scene_rect)
+        self.item.update()
+        self._sync_to_petri_net()
+
+    def undo(self):
+        self.item.has_token = self.old_value
+        if self.item.scene():
+            scene_rect = self.item.mapToScene(self.item.boundingRect()).boundingRect()
+            self.item.scene().update(scene_rect)
+        self.item.update()
+        self._sync_to_petri_net()
+
+
 class SetLinkTypeCommand(QUndoCommand):
     def __init__(self, link: LinkItem, new_type: str):
         super().__init__("Change link type")
