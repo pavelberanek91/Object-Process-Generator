@@ -1,6 +1,6 @@
 """Panel pro ovládání simulace OPM diagramu."""
 from __future__ import annotations
-from typing import Optional, Dict
+from typing import Optional, Dict, List, Tuple
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDockWidget,
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
 )
 from simulation.simulator import SimulationEngine
+from simulation.petri_net import Place
 
 
 class SimulationPanel(QDockWidget):
@@ -186,12 +187,42 @@ class SimulationPanel(QDockWidget):
                 
             # Najdi grafické prvky pro toto místo
             items = self.simulator.place_to_items.get(place_id, [])
+            if not items:
+                print(f"[UI] WARNING: No items found for place {place_id} ({place.label})")
+                # Zkusme znovu vytvořit mapování pro tento place
+                # (může se stát, že se přidaly stavy po vytvoření sítě)
+                self.simulator._build_place_mapping()
+                items = self.simulator.place_to_items.get(place_id, [])
+                if items:
+                    print(f"[UI] Rebuilt mapping, found {len(items)} items")
+                else:
+                    print(f"[UI] Still no items after rebuild, skipping")
+                    continue
+            else:
+                print(f"[UI] Updating token for place {place_id} ({place.label}): has_token={has_token}, items={len(items)}")
+            
+            # Kontrola: pokud má place state_label=None, ale objekt má stavy, varování
+            if place.state_label is None and items:
+                from graphics.nodes import ObjectItem, StateItem
+                for item in items:
+                    if isinstance(item, ObjectItem):
+                        states = [ch for ch in item.childItems() if isinstance(ch, StateItem)]
+                        if states:
+                            print(f"[UI] WARNING: Place {place_id} is for object without states, but object '{item.label}' has {len(states)} states. Please press Reset to rebuild the network.")
+            
             for item in items:
                 if hasattr(item, 'has_token'):
+                    from graphics.nodes import ObjectItem, StateItem
+                    item_type = "StateItem" if isinstance(item, StateItem) else "ObjectItem" if isinstance(item, ObjectItem) else "Unknown"
+                    print(f"[UI] Setting has_token={has_token} on {item_type} '{item.label if hasattr(item, 'label') else 'N/A'}'")
                     item.has_token = has_token
                     # Přinutíme aktualizaci scény
+                    # Pro child items (např. StateItem) musíme použít mapToScene
+                    # aby se správně aktualizovala oblast ve scénových souřadnicích
                     if item.scene():
-                        item.scene().update(item.boundingRect())
+                        # Získej bounding rect ve scénových souřadnicích
+                        scene_rect = item.mapToScene(item.boundingRect()).boundingRect()
+                        item.scene().update(scene_rect)
                     item.update()  # Překresli
         
         # Aktualizujeme checkboxy (bez emitování signálu, aby se nezacyklil)
@@ -271,18 +302,36 @@ class SimulationPanel(QDockWidget):
             checkbox.deleteLater()
         self.token_checkboxes.clear()
         
-        # Vytvoříme nové checkboxy pro každé místo
-        for place_id, place in sorted(self.simulator.net.places.items(), key=lambda x: x[1].label):
-            checkbox = QCheckBox(place.label, self.tokens_widget)
-            checkbox.setChecked(False)  # Výchozí: žádný token
-            # Připojíme signál pro automatické nastavení tokenu při změně
-            checkbox.stateChanged.connect(
-                lambda checked, pid=place_id: self._on_token_checkbox_changed(pid, checked)
-            )
-            self.token_checkboxes[place_id] = checkbox
-            self.tokens_layout.insertWidget(self.tokens_layout.count() - 1, checkbox)  # Před stretch
+        # Seskupte místa podle objektu pro lepší organizaci
+        places_by_object: Dict[str, List[Tuple[str, Place]]] = {}
+        for place_id, place in self.simulator.net.places.items():
+            obj_id = place.object_id
+            if obj_id not in places_by_object:
+                places_by_object[obj_id] = []
+            places_by_object[obj_id].append((place_id, place))
+        
+        print(f"[UI] Building token checkboxes for {len(self.simulator.net.places)} places across {len(places_by_object)} objects")
+        
+        # Vytvoříme checkboxy seskupené podle objektu
+        # Seřadíme objekty podle názvu
+        for obj_id in sorted(places_by_object.keys(), key=lambda oid: places_by_object[oid][0][1].label.split(" at state")[0]):
+            places = places_by_object[obj_id]
+            # Seřadíme místa - nejdřív objekt bez stavu, pak stavy
+            places.sort(key=lambda p: (p[1].state_label is None, p[1].state_label or ""))
+            
+            for place_id, place in places:
+                checkbox = QCheckBox(place.label, self.tokens_widget)
+                checkbox.setChecked(False)  # Výchozí: žádný token
+                # Připojíme signál pro automatické nastavení tokenu při změně
+                checkbox.stateChanged.connect(
+                    lambda checked, pid=place_id: self._on_token_checkbox_changed(pid, checked)
+                )
+                self.token_checkboxes[place_id] = checkbox
+                self.tokens_layout.insertWidget(self.tokens_layout.count() - 1, checkbox)  # Před stretch
+                print(f"[UI] Added checkbox for place {place_id}: {place.label}")
             
         self.group_tokens.setVisible(len(self.token_checkboxes) > 0)
+        print(f"[UI] Total checkboxes created: {len(self.token_checkboxes)}")
     
     def _on_token_checkbox_changed(self, place_id: str, checked: int):
         """Automaticky nastaví token při změně checkboxu."""

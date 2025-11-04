@@ -43,19 +43,40 @@ class SimulationEngine(QObject):
             items = []
             
             # Najdi objekt podle object_id
+            from graphics.nodes import ObjectItem, StateItem
+            
+            # Projdi všechny top-level items ve scéně
             for item in self.scene.items():
-                from graphics.nodes import ObjectItem, StateItem
-                
+                # Hledáme ObjectItem (top-level) nebo StateItem (child)
                 if isinstance(item, ObjectItem) and item.node_id == place.object_id:
                     if place.state_label:
-                        # Najdi stav
+                        # Najdi stav mezi child items objektu
                         for child in item.childItems():
                             if isinstance(child, StateItem) and child.label == place.state_label:
                                 items.append(child)
+                                print(f"[Simulator] Mapped place {place_id} to StateItem '{child.label}' of object '{item.label}'")
                                 break
+                        else:
+                            print(f"[Simulator] WARNING: StateItem '{place.state_label}' not found for object '{item.label}' (place {place_id})")
                     else:
                         # Objekt bez stavu
                         items.append(item)
+                        print(f"[Simulator] Mapped place {place_id} to ObjectItem '{item.label}'")
+            
+            # Pokud jsme nenašli žádné itemy, zkusme najít StateItem přímo
+            # (pro případ, že StateItem je top-level item, což by nemělo být, ale pro jistotu)
+            if not items and place.state_label:
+                for item in self.scene.items():
+                    if isinstance(item, StateItem):
+                        parent = item.parentItem()
+                        if parent and isinstance(parent, ObjectItem) and parent.node_id == place.object_id:
+                            if item.label == place.state_label:
+                                items.append(item)
+                                print(f"[Simulator] Mapped place {place_id} to StateItem '{item.label}' (found directly)")
+                                break
+                        
+            if not items:
+                print(f"[Simulator] WARNING: No items found for place {place_id} (object_id={place.object_id}, state_label={place.state_label})")
                         
             self.place_to_items[place_id] = items
             

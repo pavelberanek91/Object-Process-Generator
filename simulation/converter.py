@@ -22,11 +22,19 @@ def build_petri_net_from_scene(scene) -> PetriNet:
     processes: Dict[str, ProcessItem] = {}
     
     # Projdi všechny uzly ve scéně
+    # POZNÁMKA: scene.items() vrací všechny items včetně child items
     for item in scene.items():
         if isinstance(item, ObjectItem):
             objects[item.node_id] = item
-            states_by_object[item.node_id] = {}
+            # Inicializuj prázdný slovník pro stavy, pokud ještě neexistuje
+            if item.node_id not in states_by_object:
+                states_by_object[item.node_id] = {}
+            # Najdi všechny child stavy tohoto objektu
+            for child in item.childItems():
+                if isinstance(child, StateItem):
+                    states_by_object[item.node_id][child.label] = child
         elif isinstance(item, StateItem):
+            # StateItem může být také top-level item (např. po undo/redo)
             parent = item.parentItem()
             if parent and isinstance(parent, ObjectItem):
                 obj_id = parent.node_id
