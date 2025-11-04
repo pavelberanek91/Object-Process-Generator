@@ -477,32 +477,76 @@ class SimulationPanel(QDockWidget):
             img = self._capture_frame(scene, rb)
             frames.append(img)
             
-            # Provedeme simulaci krok za krokem
+            # Provedeme simulaci krok za krokem až do zastavení
+            # (když se marking již nemění nebo není žádný další krok)
             step_count = 0
+            previous_marking = initial_marking.copy()
+            stable_count = 0  # Počet po sobě jdoucích kroků se stejným markingem
+            max_stable = 2  # Po kolika stejných krocích zastavíme (zabrání zacyklení)
+            
+            from PySide6.QtWidgets import QApplication
+            from PySide6.QtCore import QEventLoop, QTimer as QtTimer
+            
             while step_count < max_steps:
+                # Získáme aktuální marking před krokem
+                current_marking = self.simulator.get_marking().copy()
+                
                 # Provedeme jeden krok
                 result = self.simulator.step()
-                if not result:
-                    # Žádný další krok není možný
-                    break
                 
-                # Aktualizujeme UI
-                from PySide6.QtWidgets import QApplication
+                # Aktualizujeme UI (aby se vizualizace tokenů aktualizovala)
                 QApplication.processEvents()
                 
                 # Počkáme na delay (pro vizualizaci)
-                from PySide6.QtCore import QEventLoop, QTimer as QtTimer
                 loop = QEventLoop()
                 QtTimer.singleShot(delay_ms, loop.quit)
                 loop.exec()
                 
-                # Uložíme snímek
-                img = self._capture_frame(scene, rb)
-                frames.append(img)
+                # Získáme nový marking po kroku
+                new_marking = self.simulator.get_marking().copy()
+                
+                # Uložíme snímek po každém kroku (pokud došlo ke změně markingu)
+                if new_marking != current_marking:
+                    img = self._capture_frame(scene, rb)
+                    frames.append(img)
+                    print(f"[Export] Step {step_count + 1}: Marking changed, captured frame")
+                else:
+                    print(f"[Export] Step {step_count + 1}: No marking change after step")
+                
                 step_count += 1
                 
                 # Aktualizujeme UI znovu
                 QApplication.processEvents()
+                
+                # Zkontrolujeme, zda se marking stabilizoval (zůstal stejný jako předchozí)
+                if new_marking == previous_marking:
+                    stable_count += 1
+                    if stable_count >= max_stable:
+                        print(f"[Export] Marking stabilized after {step_count} steps, stopping")
+                        # Zaznamenáme ještě finální stav (pokud jsme ho ještě nezaznamenali)
+                        if new_marking != current_marking:
+                            img = self._capture_frame(scene, rb)
+                            frames.append(img)
+                        break
+                else:
+                    stable_count = 0
+                
+                previous_marking = new_marking.copy()
+                
+                # Pokud není žádný další krok možný, zastavíme
+                if not result:
+                    print(f"[Export] No more fireable transitions after {step_count} steps")
+                    # Zaznamenáme finální stav (pokud jsme ho ještě nezaznamenali)
+                    if new_marking != current_marking:
+                        img = self._capture_frame(scene, rb)
+                        frames.append(img)
+                    break
+            
+            # Pokud jsme ještě nezaznamenali finální stav, zaznamenáme ho teď
+            if len(frames) == 1:  # Pokud máme jen počáteční stav
+                print("[Export] No changes occurred, capturing final state anyway")
+                img = self._capture_frame(scene, rb)
+                frames.append(img)
             
             # Vrátíme počáteční stav
             for place_id, has_token in initial_marking.items():
@@ -513,25 +557,29 @@ class SimulationPanel(QDockWidget):
             scene.set_draw_grid(original_grid_state)
             
             # Vytvoříme GIF
+            # POZNÁMKA: Pillow má lepší kontrolu nad duration pro GIF než imageio
+            # Použijeme pillow přímo, i když máme imageio
             import numpy as np
-            if use_imageio:
-                # imageio - očekává numpy arrays
-                imageio.mimsave(path, frames, duration=delay_seconds, loop=0)
-            else:
-                # pillow - očekává PIL Images
-                if frames:
-                    # Převod numpy arrays na PIL Images
-                    from PIL import Image
-                    pil_frames = [Image.fromarray(frame) if isinstance(frame, np.ndarray) else frame for frame in frames]
-                    
-                    if pil_frames:
-                        pil_frames[0].save(
-                            path,
-                            save_all=True,
-                            append_images=pil_frames[1:] if len(pil_frames) > 1 else [],
-                            duration=delay_ms,
-                            loop=0
-                        )
+            from PIL import Image
+            
+            # Převod numpy arrays na PIL Images
+            pil_frames = [Image.fromarray(frame) for frame in frames]
+            
+            if pil_frames:
+                # Pillow používá duration v milisekundách a má lepší kontrolu
+                # Pro GIF musíme použít duration jako int v milisekundách
+                # POZNÁMKA: Některé prohlížeče mají minimální duration (např. 20ms)
+                # Zajistíme minimálně 20ms, ale použijeme hodnotu z UI
+                gif_duration = max(int(delay_ms), 20)  # Minimálně 20ms pro GIF standard
+                
+                pil_frames[0].save(
+                    path,
+                    save_all=True,
+                    append_images=pil_frames[1:] if len(pil_frames) > 1 else [],
+                    duration=gif_duration,  # V milisekundách
+                    loop=0
+                )
+                print(f"[Export] Saved GIF with {len(frames)} frames using pillow, duration={gif_duration}ms ({gif_duration/1000.0}s) per frame")
             
             QMessageBox.information(
                 self, "Export Complete",
@@ -553,9 +601,13 @@ class SimulationPanel(QDockWidget):
     
     def _capture_frame(self, scene, bounding_rect):
         """Zachytí jeden snímek scény jako QImage a převede na formát pro GIF."""
+        # Vytvoříme obrázek s bílým pozadím
         img = QImage(int(bounding_rect.width()), int(bounding_rect.height()), QImage.Format_ARGB32_Premultiplied)
-        img.fill(0x00FFFFFF)
+        # Vyplníme bílou barvou (0xFFFFFFFF = bílá, ne průhledná)
+        img.fill(0xFFFFFFFF)
         painter = QPainter(img)
+        # Nastavíme bílé pozadí pro renderování
+        painter.setBackground(Qt.white)
         scene.render(painter, target=QRectF(0, 0, bounding_rect.width(), bounding_rect.height()), source=bounding_rect)
         painter.end()
         
@@ -580,17 +632,32 @@ class SimulationPanel(QDockWidget):
             from PIL import Image
             pil_img = Image.open(io.BytesIO(buffer.data()))
             arr = np.array(pil_img)
-            # Pokud je to RGBA, převedeme na RGB
+            
+            # Zajistíme bílé pozadí - pokud je obrázek RGBA, sloučíme s bílým pozadím
             if arr.shape[2] == 4:
+                # RGBA - sloučíme s bílým pozadím
+                alpha = arr[:, :, 3:4] / 255.0
+                rgb = arr[:, :, :3]
+                # Kompozice přes bílé pozadí
+                arr = (rgb * alpha + 255 * (1 - alpha)).astype(np.uint8)
+            else:
+                # Už je RGB, použijeme přímo
                 arr = arr[:, :, :3]
+            
+            # Zajistíme, že pozadí je skutečně bílé (pokud je pixel velmi tmavý, může být to pozadí)
+            # Pro jistotu: pokud je pixel téměř černý (0,0,0), nahradíme ho bílou
+            # (ale to může být problematické, takže to necháme být)
+            
         except ImportError:
             # Pokud není PIL, použijeme imageio
             try:
                 import imageio
                 arr = imageio.imread(io.BytesIO(buffer.data()))
-                # Pokud je to RGBA, převedeme na RGB
+                # Pokud je to RGBA, převedeme na RGB s bílým pozadím
                 if len(arr.shape) == 3 and arr.shape[2] == 4:
-                    arr = arr[:, :, :3]
+                    alpha = arr[:, :, 3:4] / 255.0
+                    rgb = arr[:, :, :3]
+                    arr = (rgb * alpha + 255 * (1 - alpha)).astype(np.uint8)
             except ImportError:
                 # Fallback: přímá konverze z QImage (méně spolehlivá)
                 byte_data = img_rgb.bits()
