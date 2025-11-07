@@ -78,7 +78,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Bílá výplň
     - Může obsahovat stavy (StateItem jako potomky)
     - Podporuje změnu velikosti pomocí resize handles
-    - Může zobrazovat token (navy blue kruh) pro simulaci (pouze pokud nemá stavy)
+    - Může zobrazovat token (červený kruh) pro simulaci (pouze pokud nemá stavy)
     """
     def __init__(self, rect: QRectF, label: str = "Object", essence: str = "informatical", affiliation: str = "systemic"):
         super().__init__(rect)
@@ -129,11 +129,11 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setPen(Qt.black)
         painter.drawText(rect_for_text, Qt.AlignCenter, self.label)
         
-        # Vykresli token (navy blue kruh) pokud má objekt token a nemá stavy
+        # Vykresli token (červený kruh) pokud má objekt token a nemá stavy
         if self.has_token and not states:
             token_rect = QRectF(self.rect().right() - 16, self.rect().top() + 4, 12, 12)
-            navy_blue = QColor(0, 0, 128)  # Navy blue
-            painter.setBrush(QBrush(navy_blue))
+            token_red = QColor(220, 50, 50)  # Výrazná, ale ne agresivní červená
+            painter.setBrush(QBrush(token_red))
             painter.setPen(Qt.NoPen)
             painter.drawEllipse(token_rect)
 
@@ -288,7 +288,7 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Hnědý obrys (150, 75, 0)
     - Bílá výplň
     - Podporuje změnu velikosti pomocí resize handles
-    - Může zobrazovat token (navy blue kruh) pro simulaci
+    - Může zobrazovat token (červený kruh) pro simulaci
     """
     def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
         super().__init__(rect, parent=parent_obj)
@@ -335,11 +335,11 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setPen(Qt.black)
         painter.drawText(self.rect(), Qt.AlignCenter, self.label)
         
-        # Vykresli token (navy blue kruh) pokud má místo token
+        # Vykresli token (červený kruh) pokud má místo token
         if self.has_token:
             token_rect = QRectF(self.rect().right() - 12, self.rect().top() + 2, 10, 10)
-            navy_blue = QColor(0, 0, 128)  # Navy blue
-            painter.setBrush(QBrush(navy_blue))
+            token_red = QColor(220, 50, 50)  # Výrazná, ale ne agresivní červená
+            painter.setBrush(QBrush(token_red))
             painter.setPen(Qt.NoPen)
             painter.drawEllipse(token_rect)
 
