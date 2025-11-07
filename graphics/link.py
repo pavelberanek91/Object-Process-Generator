@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (
 # Načtení ikon pro strukturální vztahy
 _STRUCTURAL_ICONS = {}
 
-# Načtení SVG ikon pro procedurální vztahy (OPM šipky)
-_PROCEDURAL_ARROW_ICONS = {}
+# Načtení SVG rendererů pro procedurální vztahy (OPM šipky) - vektorové vykreslování
+_PROCEDURAL_ARROW_RENDERERS = {}
 
 def _load_structural_icons():
     """Načte PNG ikony pro strukturální vztahy ze složky ui/icons/"""
@@ -48,8 +48,8 @@ def _load_structural_icons():
             _STRUCTURAL_ICONS[link_type] = None
 
 def _load_procedural_arrow_icons():
-    """Načte SVG ikony pro procedurální vztahy (OPM šipky) ze složky ui/icons/"""
-    if _PROCEDURAL_ARROW_ICONS:
+    """Načte SVG renderery pro procedurální vztahy (OPM šipky) ze složky ui/icons/"""
+    if _PROCEDURAL_ARROW_RENDERERS:
         return  # Už načteno
     
     icons_dir = Path(__file__).parent.parent / "ui" / "icons"
@@ -62,24 +62,18 @@ def _load_procedural_arrow_icons():
     }
     
     from PySide6.QtSvg import QSvgRenderer
-    from PySide6.QtGui import QPixmap, QPainter
     
     for link_type, filename in svg_files.items():
         svg_path = icons_dir / f"{filename}.svg"
         if svg_path.exists():
             renderer = QSvgRenderer(str(svg_path))
             if renderer.isValid():
-                # Vytvoříme pixmap z SVG (velikost 20x20 pro šipku)
-                pixmap = QPixmap(20, 20)
-                pixmap.fill(Qt.transparent)
-                painter = QPainter(pixmap)
-                renderer.render(painter)
-                painter.end()
-                _PROCEDURAL_ARROW_ICONS[link_type] = pixmap
+                # Uložíme renderer pro vektorové vykreslování
+                _PROCEDURAL_ARROW_RENDERERS[link_type] = renderer
             else:
-                _PROCEDURAL_ARROW_ICONS[link_type] = None
+                _PROCEDURAL_ARROW_RENDERERS[link_type] = None
         else:
-            _PROCEDURAL_ARROW_ICONS[link_type] = None
+            _PROCEDURAL_ARROW_RENDERERS[link_type] = None
 
 
 class LabelHandle(QGraphicsSimpleTextItem):
@@ -294,23 +288,20 @@ class LinkItem(QGraphicsPathItem):
         
         def draw_arrow_at(point: QPointF, ang: float, open: bool=False):
             """Kreslí OPM šipku (pětiúhelník) nebo použije SVG ikonu pokud existuje."""
-            # Zkusíme použít SVG ikonu pro procedurální šipku
-            arrow_icon = _PROCEDURAL_ARROW_ICONS.get(link_type)
+            # Zkusíme použít SVG renderer pro procedurální šipku (vektorové vykreslování)
+            arrow_renderer = _PROCEDURAL_ARROW_RENDERERS.get(link_type)
             
-            if arrow_icon and not arrow_icon.isNull():
-                # Použijeme SVG ikonu
+            if arrow_renderer and arrow_renderer.isValid():
+                # Použijeme SVG renderer pro vektorové vykreslování
                 painter.save()
                 painter.translate(point)
                 rotation_angle = math.degrees(ang)
                 painter.rotate(rotation_angle)
                 
-                # Vykreslíme ikonu vystředěnou
-                icon_size = arrow_icon.size()
-                painter.drawPixmap(
-                    -icon_size.width() // 2,
-                    -icon_size.height() // 2,
-                    arrow_icon
-                )
+                # Vykreslíme SVG vektorově (velikost 20x20, vystředěné)
+                icon_size = 20
+                rect = QRectF(-icon_size // 2, -icon_size // 2, icon_size, icon_size)
+                arrow_renderer.render(painter, rect)
                 painter.restore()
             else:
                 # Fallback: nakreslíme pětiúhelník (OPM šipka)
@@ -378,9 +369,18 @@ class LinkItem(QGraphicsPathItem):
         else:
             # původní chování – kreslení na konce
             am = style.get("arrow")
-            if am == "dst": draw_arrow_at(b, angle)
-            elif am == "src": draw_arrow_at(a, angle + math.pi)
-            elif am == "both": (draw_arrow_at(b, angle), draw_arrow_at(a, angle + math.pi))
+            # Posuneme šipku ven od objektu (offset 13 pixelů)
+            arrow_offset = 11
+            dx = b.x() - a.x()
+            dy = b.y() - a.y()
+            L = math.hypot(dx, dy) or 1.0
+            ux, uy = dx / L, dy / L
+            b_offset = QPointF(b.x() - ux * arrow_offset, b.y() - uy * arrow_offset)
+            a_offset = QPointF(a.x() + ux * arrow_offset, a.y() + uy * arrow_offset)
+            
+            if am == "dst": draw_arrow_at(b_offset, angle)
+            elif am == "src": draw_arrow_at(a_offset, angle + math.pi)
+            elif am == "both": (draw_arrow_at(b_offset, angle), draw_arrow_at(a_offset, angle + math.pi))
 
             marker = style.get("marker")
             if marker:
@@ -390,8 +390,8 @@ class LinkItem(QGraphicsPathItem):
             circle = style.get("circle")
             if circle:
                 fill_kind, end = circle
-                # Pro agent a instrument: kruh blízko konce linku (offset 2 místo 10)
-                pos = self._point_near(a, b, end, 2)
+                # Pro agent a instrument: kruh blíže k objektu (offset 6 pixelů)
+                pos = self._point_near(a, b, end, 6)
                 painter.save()
                 painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
                 painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
