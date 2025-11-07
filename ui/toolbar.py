@@ -264,8 +264,9 @@ class ToolbarManager:
     def _add_mode_actions(self, tb: QToolBar):
         """Přidá akce pro přepínání módů."""
         act_select = QAction(icon_shape("cursor"), "", self.main_window)
-        act_select.setToolTip("Select/Move")
+        act_select.setToolTip("Select/Move (S)")
         act_select.setCheckable(True)
+        act_select.setShortcut(QKeySequence("S"))
         tb.addAction(act_select)
         act_select.triggered.connect(lambda: self.main_window.set_mode(Mode.SELECT))
         

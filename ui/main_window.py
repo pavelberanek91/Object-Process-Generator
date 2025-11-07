@@ -788,6 +788,10 @@ class MainWindow(QMainWindow):
     def set_mode(self, mode: str):
         """Nastaví režim editoru."""
         self.mode = mode
+        
+        # Zrušit výběr všech prvků při přepnutí nástroje
+        self.scene.clearSelection()
+        
         try:
             if hasattr(self, 'actions') and mode in self.actions:
                 self.actions[mode].setChecked(True)
@@ -1101,6 +1105,12 @@ class MainWindow(QMainWindow):
         if event.key() == Qt.Key_L:
             # L = Přidat link
             self.set_mode(Mode.ADD_LINK)
+            event.accept()
+            return
+        
+        if event.key() == Qt.Key_S:
+            # S = Select tool
+            self.set_mode(Mode.SELECT)
             event.accept()
             return
         

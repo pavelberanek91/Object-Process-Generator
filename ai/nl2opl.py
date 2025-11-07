@@ -1,5 +1,6 @@
 """Modul pro převod přirozeného jazyka (NL) na OPL věty pomocí AI/LLM."""
 import re
+import sys
 from pathlib import Path
 from dataclasses import dataclass
 # LangChain framework pro práci s LLM
@@ -7,9 +8,23 @@ from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 
 
-# Cesty k souborům s prompt šablonami pro AI model
-SYSTEM_PROMPT_FILE = Path(Path.cwd(), "ai", "prompts", "system.prompt")
-USER_PROMPT_FILE = Path(Path.cwd(), "ai", "prompts", "human.prompt")
+def resource_path(relative: str) -> Path:
+    """Vrátí cestu ke zdroji fungující v běžném běhu i v PyInstaller buildu.
+
+    - V PyInstaller režimu se soubory rozbalí do dočasné složky `_MEIPASS`.
+    - V dev/prostředí zdrojů se vychází z kořene projektu dle umístění tohoto souboru.
+    """
+    if hasattr(sys, "_MEIPASS"):
+        # Běh z PyInstaller balíčku
+        return Path(getattr(sys, "_MEIPASS")) / relative
+    # Běh ze zdrojáků: kořen = dva adresáře nad tímto souborem (.. => projekt root)
+    project_root = Path(__file__).resolve().parent.parent
+    return project_root / relative
+
+
+# Cesty k souborům s prompt šablonami pro AI model (relativně k rootu projektu / _MEIPASS)
+SYSTEM_PROMPT_FILE = resource_path("ai/prompts/system.prompt")
+USER_PROMPT_FILE = resource_path("ai/prompts/human.prompt")
 
 
 def load_prompt_texts(system_prompt_path, user_prompt_path) -> tuple[str, str]:
