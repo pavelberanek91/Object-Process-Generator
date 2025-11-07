@@ -321,7 +321,8 @@ class LinkItem(QGraphicsPathItem):
             circle = style.get("circle")
             if circle:
                 fill_kind, end = circle
-                pos = self._point_near(a, b, end, 10)
+                # Pro agent a instrument: kruh blízko konce linku (offset 2 místo 10)
+                pos = self._point_near(a, b, end, 2)
                 painter.save()
                 painter.setBrush((Qt.blue if selected else Qt.black) if fill_kind=="filled" else Qt.white)
                 painter.drawEllipse(QRectF(pos.x()-5, pos.y()-5, 10, 10))
