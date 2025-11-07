@@ -1,0 +1,220 @@
+{
+  "nodes": [
+    {
+      "id": "object_10",
+      "kind": "object",
+      "label": "Recyklační centrum",
+      "x": -1213.0,
+      "y": -54.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_9",
+      "kind": "object",
+      "label": "Nový produkt",
+      "x": -1070.0,
+      "y": 227.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_8",
+      "kind": "process",
+      "label": "Recyklace",
+      "x": -1071.0,
+      "y": 70.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_7",
+      "kind": "object",
+      "label": "Odpad",
+      "x": -822.0,
+      "y": 70.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_6",
+      "kind": "process",
+      "label": "Odhození láhve",
+      "x": -824.0,
+      "y": -63.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_5",
+      "kind": "process",
+      "label": "Použití láhve",
+      "x": -633.0,
+      "y": -312.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_4",
+      "kind": "object",
+      "label": "Spotřebitel",
+      "x": -590.0,
+      "y": -147.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_3",
+      "kind": "object",
+      "label": "Plastová láhev",
+      "x": -899.0,
+      "y": -311.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_2",
+      "kind": "process",
+      "label": "Výroba láhve",
+      "x": -1016.0,
+      "y": -162.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_1",
+      "kind": "object",
+      "label": "Suroviny",
+      "x": -1157.0,
+      "y": -308.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    }
+  ],
+  "links": [
+    {
+      "id": "link_11",
+      "src": "object_3",
+      "dst": "process_6",
+      "link_type": "consumption",
+      "label": "",
+      "type_dx": 15.999999999999886,
+      "type_dy": -10.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_12",
+      "src": "object_7",
+      "dst": "process_8",
+      "link_type": "consumption",
+      "label": "",
+      "type_dx": -29.0,
+      "type_dy": 7.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_13",
+      "src": "process_8",
+      "dst": "object_9",
+      "link_type": "output",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_14",
+      "src": "object_10",
+      "dst": "process_8",
+      "link_type": "agent",
+      "label": "",
+      "type_dx": 14.0,
+      "type_dy": -13.999999999999993,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_15",
+      "src": "object_4",
+      "dst": "process_6",
+      "link_type": "agent",
+      "label": "",
+      "type_dx": -29.999999999999886,
+      "type_dy": -23.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_16",
+      "src": "process_6",
+      "dst": "object_7",
+      "link_type": "result",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_17",
+      "src": "object_4",
+      "dst": "process_5",
+      "link_type": "agent",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_18",
+      "src": "object_3",
+      "dst": "process_5",
+      "link_type": "effect",
+      "label": "",
+      "type_dx": -15.0,
+      "type_dy": -25.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_19",
+      "src": "process_2",
+      "dst": "object_3",
+      "link_type": "result",
+      "label": "",
+      "type_dx": 9.0,
+      "type_dy": 3.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    },
+    {
+      "id": "link_20",
+      "src": "object_1",
+      "dst": "process_2",
+      "link_type": "consumption",
+      "label": "",
+      "type_dx": -78.0,
+      "type_dy": -1.9999999999999147,
+      "label_dx": 6.0,
+      "label_dy": 12.0
+    }
+  ],
+  "meta": {
+    "format": "opm-mvp-json",
+    "version": 1
+  }
+}

@@ -1,0 +1,237 @@
+{
+  "nodes": [
+    {
+      "id": "object_8",
+      "kind": "object",
+      "label": "D",
+      "x": -1139.0,
+      "y": -454.5,
+      "w": 400.0,
+      "h": 125.0,
+      "parent_id": null
+    },
+    {
+      "id": "state_9",
+      "kind": "state",
+      "label": "D1",
+      "x": -1270.0,
+      "y": -419.0,
+      "w": 100.0,
+      "h": 28.0,
+      "parent_id": "object_8"
+    },
+    {
+      "id": "state_10",
+      "kind": "state",
+      "label": "D2",
+      "x": -1149.0,
+      "y": -419.0,
+      "w": 100.0,
+      "h": 28.0,
+      "parent_id": "object_8"
+    },
+    {
+      "id": "state_11",
+      "kind": "state",
+      "label": "D3",
+      "x": -1029.0,
+      "y": -422.0,
+      "w": 100.0,
+      "h": 28.0,
+      "parent_id": "object_8"
+    },
+    {
+      "id": "object_7",
+      "kind": "object",
+      "label": "E",
+      "x": -300.0,
+      "y": -200.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_6",
+      "kind": "process",
+      "label": "F",
+      "x": -487.0,
+      "y": -406.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "process_2",
+      "kind": "process",
+      "label": "C",
+      "x": -793.0,
+      "y": -53.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    },
+    {
+      "id": "object_1",
+      "kind": "object",
+      "label": "A",
+      "x": -698.0,
+      "y": -253.5,
+      "w": 300.0,
+      "h": 125.0,
+      "parent_id": null
+    },
+    {
+      "id": "state_4",
+      "kind": "state",
+      "label": "S1",
+      "x": -763.0,
+      "y": -220.0,
+      "w": 100.0,
+      "h": 28.0,
+      "parent_id": "object_1"
+    },
+    {
+      "id": "state_5",
+      "kind": "state",
+      "label": "S2",
+      "x": -638.0,
+      "y": -220.0,
+      "w": 100.0,
+      "h": 28.0,
+      "parent_id": "object_1"
+    },
+    {
+      "id": "object_3",
+      "kind": "object",
+      "label": "B",
+      "x": -474.0,
+      "y": -43.0,
+      "w": 140.0,
+      "h": 70.0,
+      "parent_id": null
+    }
+  ],
+  "links": [
+    {
+      "id": "link_12",
+      "src": "object_8",
+      "dst": "object_1",
+      "link_type": "exhibition",
+      "label": "",
+      "type_dx": 17.0,
+      "type_dy": -10.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_13",
+      "src": "state_10",
+      "dst": "process_2",
+      "link_type": "consumption",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_14",
+      "src": "object_7",
+      "dst": "object_3",
+      "link_type": "instantiation",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_15",
+      "src": "process_6",
+      "dst": "object_7",
+      "link_type": "result",
+      "label": "",
+      "type_dx": 17.0,
+      "type_dy": -19.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_16",
+      "src": "object_8",
+      "dst": "process_6",
+      "link_type": "consumption",
+      "label": "",
+      "type_dx": -29.0,
+      "type_dy": 7.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_17",
+      "src": "state_4",
+      "dst": "process_2",
+      "link_type": "input",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -4.0,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_18",
+      "src": "process_2",
+      "dst": "state_5",
+      "link_type": "output",
+      "label": "",
+      "type_dx": 6.0,
+      "type_dy": -3.9999999999999716,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_19",
+      "src": "process_2",
+      "dst": "object_3",
+      "link_type": "result",
+      "label": "",
+      "type_dx": -8.0,
+      "type_dy": 4.999999999999993,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "",
+      "card_dst": ""
+    },
+    {
+      "id": "link_20",
+      "src": "object_1",
+      "dst": "object_3",
+      "link_type": "generalization",
+      "label": "",
+      "type_dx": 13.0,
+      "type_dy": -23.000000000000057,
+      "label_dx": 6.0,
+      "label_dy": 12.0,
+      "card_src": "0",
+      "card_dst": "1..*"
+    }
+  ],
+  "meta": {
+    "format": "opm-mvp-json",
+    "version": 1
+  }
+}

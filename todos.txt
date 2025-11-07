@@ -1,0 +1,45 @@
+Issue2:
+	Při přidávání stavů do objektu se občas napíše hláška, QGraphicsScene::addItem: item has already been added to this scene.
+    Objekt se pak nepřidá. Opakováním klikáním se to povede.
+
+Issue4:
+	Lepší chybové hlášky při nevalidních linkách.
+
+Issue5:
+	Při mazání označených prvků mi to napsalo hlášku: QGraphicsScene::removeItem: item 0x1c0aac39990's scene (0x0) is different from this scene (0x1c0aa4edeb0)
+
+Issue6:
+	Při načtení diagramu z JSON mi to napsalo hlášku: QGraphicsScene::addItem: item has already been added to this scene
+
+Issue7:
+	Udělat ještě export do JPG s bílým pozadím.
+
+Issue8:
+	Lišta s vlastnostma má reflektovat vlastnosti prvků na které se klikne.
+
+Issue9:
+	Měnitelný velikost fontu jako vlastnost objektů
+
+Issue10:
+	Vymyslet z pohledu UX lepší způsob vybrání vytvářeného linku.
+
+Issue11:
+	Přeuspořádat menu do kartiček a udělat asi ikonky
+
+Issue12:
+	Vztah affect ukazuje jen proces->objekt (P2 affects O3.) a ne obráceně, zjistit podle normy, jak to je.
+
+Issue13:
+	Vztah specialization má stejně znění jako generalizace. Je správně, jen zjistit, jak je to dle standardu, protože pak je to redundantní vztah.
+	Dokonce při nahrání souboru se specialization změnil na generalization (a asi se správným směrem).
+
+Issue14:
+	Při importu jsou prvky zacvaknuté v gridu a nevypadá to nejlépe, musí se následně rozmístit. Chtělo by to vhodnější algoritmus. Tohle nechat na později.
+
+Issue15: 
+	Chtělo by to, aby když se nahrává nebo generuje OPD z OPL, tak aby to bylo v místě na které kouká uživatel.
+
+Issue16:
+	Vytvoři korpus příkladů jak vypadá NLP na OPL.
+
+Pes je objekt, který procesem čůrání čůrá na objekty zlé lidi.

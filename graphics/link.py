@@ -21,6 +21,9 @@ from PySide6.QtWidgets import (
 # Načtení ikon pro strukturální vztahy
 _STRUCTURAL_ICONS = {}
 
+# Načtení SVG ikon pro procedurální vztahy (OPM šipky)
+_PROCEDURAL_ARROW_ICONS = {}
+
 def _load_structural_icons():
     """Načte PNG ikony pro strukturální vztahy ze složky ui/icons/"""
     if _STRUCTURAL_ICONS:
@@ -43,6 +46,40 @@ def _load_structural_icons():
             _STRUCTURAL_ICONS[link_type] = pixmap
         else:
             _STRUCTURAL_ICONS[link_type] = None
+
+def _load_procedural_arrow_icons():
+    """Načte SVG ikony pro procedurální vztahy (OPM šipky) ze složky ui/icons/"""
+    if _PROCEDURAL_ARROW_ICONS:
+        return  # Už načteno
+    
+    icons_dir = Path(__file__).parent.parent / "ui" / "icons"
+    
+    # SVG ikony pro procedurální šipky
+    svg_files = {
+        "consumption": "procedural_arrow",  # SVG pro consumption/result šipku
+        "result": "procedural_arrow",
+        "effect": "procedural_arrow",
+    }
+    
+    from PySide6.QtSvg import QSvgRenderer
+    from PySide6.QtGui import QPixmap, QPainter
+    
+    for link_type, filename in svg_files.items():
+        svg_path = icons_dir / f"{filename}.svg"
+        if svg_path.exists():
+            renderer = QSvgRenderer(str(svg_path))
+            if renderer.isValid():
+                # Vytvoříme pixmap z SVG (velikost 20x20 pro šipku)
+                pixmap = QPixmap(20, 20)
+                pixmap.fill(Qt.transparent)
+                painter = QPainter(pixmap)
+                renderer.render(painter)
+                painter.end()
+                _PROCEDURAL_ARROW_ICONS[link_type] = pixmap
+            else:
+                _PROCEDURAL_ARROW_ICONS[link_type] = None
+        else:
+            _PROCEDURAL_ARROW_ICONS[link_type] = None
 
 
 class LabelHandle(QGraphicsSimpleTextItem):
@@ -92,6 +129,7 @@ class LinkItem(QGraphicsPathItem):
     def __init__(self, src: QGraphicsItem, dst: QGraphicsItem, link_type: str="consumption", label: str=""):
         super().__init__()
         _load_structural_icons()  # Načteme ikony při první inicializaci
+        _load_procedural_arrow_icons()  # Načteme SVG ikony pro procedurální šipky
         self.setZValue(1)
         self.setFlags(QGraphicsItem.ItemIsSelectable)
         self.src = src
@@ -255,16 +293,47 @@ class LinkItem(QGraphicsPathItem):
         link_type = self.link_type
         
         def draw_arrow_at(point: QPointF, ang: float, open: bool=False):
-            arrow_size = 10
-            p1 = point + QPointF(-arrow_size*math.cos(ang - math.pi/6), -arrow_size*math.sin(ang - math.pi/6))
-            p2 = point + QPointF(-arrow_size*math.cos(ang + math.pi/6), -arrow_size*math.sin(ang + math.pi/6))
-            poly = QPolygonF([point, p1, p2])
-            # OPM standard: bílá výplň s černým ohraničením (nebo modrá když je vybraná)
-            if selected:
-                painter.setBrush(Qt.blue)
+            """Kreslí OPM šipku (pětiúhelník) nebo použije SVG ikonu pokud existuje."""
+            # Zkusíme použít SVG ikonu pro procedurální šipku
+            arrow_icon = _PROCEDURAL_ARROW_ICONS.get(link_type)
+            
+            if arrow_icon and not arrow_icon.isNull():
+                # Použijeme SVG ikonu
+                painter.save()
+                painter.translate(point)
+                rotation_angle = math.degrees(ang)
+                painter.rotate(rotation_angle)
+                
+                # Vykreslíme ikonu vystředěnou
+                icon_size = arrow_icon.size()
+                painter.drawPixmap(
+                    -icon_size.width() // 2,
+                    -icon_size.height() // 2,
+                    arrow_icon
+                )
+                painter.restore()
             else:
-                painter.setBrush(Qt.white)
-            painter.drawPolygon(poly)
+                # Fallback: nakreslíme pětiúhelník (OPM šipka)
+                # OPM šipka je pětiúhelník s hrotem směřujícím ve směru šipky
+                arrow_size = 10
+                # Hrot (vrchol šipky)
+                tip = point
+                # Dva boční body
+                side1 = point + QPointF(-arrow_size*math.cos(ang - math.pi/6), -arrow_size*math.sin(ang - math.pi/6))
+                side2 = point + QPointF(-arrow_size*math.cos(ang + math.pi/6), -arrow_size*math.sin(ang + math.pi/6))
+                # Dva zadní body (základna)
+                base1 = point + QPointF(-arrow_size*1.5*math.cos(ang - math.pi/4), -arrow_size*1.5*math.sin(ang - math.pi/4))
+                base2 = point + QPointF(-arrow_size*1.5*math.cos(ang + math.pi/4), -arrow_size*1.5*math.sin(ang + math.pi/4))
+                
+                poly = QPolygonF([tip, side1, base1, base2, side2])
+                # OPM standard: bílá výplň s černým ohraničením (nebo modrá když je vybraná)
+                if selected:
+                    painter.setBrush(Qt.blue)
+                    painter.setPen(QPen(Qt.blue, 2))
+                else:
+                    painter.setBrush(Qt.white)
+                    painter.setPen(QPen(Qt.black, 2))
+                painter.drawPolygon(poly)
             
         if link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
             # kreslíme do středu
