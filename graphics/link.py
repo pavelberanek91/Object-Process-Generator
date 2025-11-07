@@ -18,15 +18,15 @@ from PySide6.QtWidgets import (
 )
 
 
-# Načtení ikon pro strukturální vztahy
-_STRUCTURAL_ICONS = {}
+# Načtení SVG rendererů pro strukturální vztahy - vektorové vykreslování
+_STRUCTURAL_RENDERERS = {}
 
 # Načtení SVG rendererů pro procedurální vztahy (OPM šipky) - vektorové vykreslování
 _PROCEDURAL_ARROW_RENDERERS = {}
 
 def _load_structural_icons():
-    """Načte PNG ikony pro strukturální vztahy ze složky ui/icons/"""
-    if _STRUCTURAL_ICONS:
+    """Načte SVG renderery pro strukturální vztahy ze složky ui/icons/"""
+    if _STRUCTURAL_RENDERERS:
         return  # Už načteno
     
     icons_dir = Path(__file__).parent.parent / "ui" / "icons"
@@ -39,13 +39,19 @@ def _load_structural_icons():
         "instantiation": "instatiation"  # Soubor má překlep, ale zachováváme ho
     }
     
+    from PySide6.QtSvg import QSvgRenderer
+    
     for link_type, filename in icon_files.items():
-        png_path = icons_dir / f"{filename}.png"
-        if png_path.exists():
-            pixmap = QPixmap(str(png_path))
-            _STRUCTURAL_ICONS[link_type] = pixmap
+        svg_path = icons_dir / f"{filename}.svg"
+        if svg_path.exists():
+            renderer = QSvgRenderer(str(svg_path))
+            if renderer.isValid():
+                # Uložíme renderer pro vektorové vykreslování
+                _STRUCTURAL_RENDERERS[link_type] = renderer
+            else:
+                _STRUCTURAL_RENDERERS[link_type] = None
         else:
-            _STRUCTURAL_ICONS[link_type] = None
+            _STRUCTURAL_RENDERERS[link_type] = None
 
 def _load_procedural_arrow_icons():
     """Načte SVG renderery pro procedurální vztahy (OPM šipky) ze složky ui/icons/"""
@@ -328,11 +334,11 @@ class LinkItem(QGraphicsPathItem):
             
         if link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
             # kreslíme do středu
-            # Zkusíme použít PNG ikonu
-            icon_pixmap = _STRUCTURAL_ICONS.get(link_type)
+            # Zkusíme použít SVG renderer pro vektorové vykreslování
+            icon_renderer = _STRUCTURAL_RENDERERS.get(link_type)
             
-            if icon_pixmap and not icon_pixmap.isNull():
-                # Vykreslíme ikonu
+            if icon_renderer and icon_renderer.isValid():
+                # Vykreslíme SVG vektorově
                 painter.save()
                 
                 # Přesuneme se do středu vazby
@@ -342,13 +348,10 @@ class LinkItem(QGraphicsPathItem):
                 rotation_angle = math.degrees(angle)
                 painter.rotate(rotation_angle)
                 
-                # Vykreslíme ikonu vystředěnou
-                icon_size = icon_pixmap.size()
-                painter.drawPixmap(
-                    -icon_size.width() // 2,
-                    -icon_size.height() // 2,
-                    icon_pixmap
-                )
+                # Vykreslíme SVG vektorově (velikost 20x20, vystředěné)
+                icon_size = 20
+                rect = QRectF(-icon_size // 2, -icon_size // 2, icon_size, icon_size)
+                icon_renderer.render(painter, rect)
                 
                 painter.restore()
             else:
