@@ -73,7 +73,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     Grafická reprezentace objektu v OPM diagramu.
     
     Vizuální znaky:
-    - Obdélník se zaoblenými rohy
+    - Obdélník s rovnými rohy
     - Zelený obrys (0, 128, 0)
     - Bílá výplň
     - Může obsahovat stavy (StateItem jako potomky)
@@ -110,11 +110,11 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             shadow_offset = 8
             painter.setBrush(QColor(80, 80, 80, 120))
             painter.setPen(Qt.NoPen)
-            painter.drawRoundedRect(self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset), 12, 12)
+            painter.drawRect(self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset))
         
         painter.setPen(pen)
         painter.setBrush(self.brush())
-        painter.drawRoundedRect(self.rect(), 12, 12)
+        painter.drawRect(self.rect())
 
         # dostupná oblast pro text (pokud má stavy, posuneme text nahoru)
         states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
@@ -142,7 +142,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
             sel.setCosmetic(True)
             painter.setPen(sel)
             painter.setBrush(Qt.NoBrush)
-            painter.drawRoundedRect(self.rect().adjusted(-6, -6, 6, 6), 12, 12)
+            painter.drawRect(self.rect().adjusted(-6, -6, 6, 6))
 
     def mouseDoubleClickEvent(self, event):
         # dvojklik kamkoli do objektu = přidání stavu
