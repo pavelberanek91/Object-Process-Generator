@@ -274,9 +274,9 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         
         # Vykresli token (červený kruh) pokud má proces token
         if self.has_token:
-            # Token uprostřed procesu
+            # Token nad středem procesu, aby byl vidět název
             center = self.rect().center()
-            token_rect = QRectF(center.x() - 8, center.y() - 8, 16, 16)
+            token_rect = QRectF(center.x() - 8, center.y() - 20, 16, 16)  # Posunuto nahoru o 12 pixelů
             token_red = QColor(220, 50, 50)  # Výrazná, ale ne agresivní červená
             painter.setBrush(QBrush(token_red))
             painter.setPen(Qt.NoPen)
