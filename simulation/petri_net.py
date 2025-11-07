@@ -108,7 +108,7 @@ class PetriNet:
         return all(not self.has_token(pid) for pid in output_places)
         
     def fire_transition(self, transition_id: str) -> bool:
-        """Provede přechod (pokud je to možné).
+        """Provede přechod (pokud je to možné) - původní jednofázová verze.
         
         Returns:
             True pokud se přechod provedl, False jinak
@@ -125,6 +125,75 @@ class PetriNet:
         for arc in self.arcs:
             if arc.transition_id == transition_id and arc.arc_type == "output":
                 self.set_token(arc.place_id, True)
+                
+        return True
+    
+    def activate_transition(self, transition_id: str) -> bool:
+        """Aktivuje přechod - fáze 1: odebere tokeny ze vstupů.
+        
+        Pro input-output link pairs (stejný objekt, různé stavy) je důležité,
+        že kontrolujeme jen is_enabled(), ne can_fire(), protože výstupní místa
+        se uvolní až po odebrání tokenu ze vstupního stavu.
+        
+        Returns:
+            True pokud se přechod aktivoval, False jinak
+        """
+        # Kontrolujeme jen, zda je přechod aktivní (vstupy mají tokeny)
+        # Nekontrolujeme can_fire(), protože výstupní místa se uvolní až po aktivaci
+        if not self.is_enabled(transition_id):
+            return False
+            
+        # Odebereme tokeny ze vstupních míst (pouze z input, ne z test)
+        input_arcs = [arc for arc in self.arcs if arc.transition_id == transition_id and arc.arc_type == "input"]
+        print(f"[PetriNet.activate_transition] Removing tokens from {len(input_arcs)} input places:")
+        for arc in input_arcs:
+            place = self.places.get(arc.place_id)
+            place_label = place.label if place else arc.place_id
+            print(f"  - {place_label} (place_id={arc.place_id})")
+            self.set_token(arc.place_id, False)
+                
+        return True
+    
+    def complete_transition(self, transition_id: str) -> bool:
+        """Dokončí přechod - fáze 2: přidá tokeny do výstupů.
+        
+        Pro input-output link pairs (stejný objekt, různé stavy) je důležité,
+        že po aktivaci (odebrání tokenu ze vstupního stavu) je výstupní stav volný.
+        
+        Returns:
+            True pokud se přechod dokončil, False jinak
+        """
+        # Zkontrolujeme, zda má přechod výstupní místa
+        output_places = self.get_output_places(transition_id)
+        if not output_places:
+            print(f"[PetriNet.complete_transition] Transition {transition_id} has no output places")
+            return False
+        
+        # Zkontrolujeme, zda jsou výstupní místa volná
+        # Pro input-output link pairs: po aktivaci (odebrání tokenu ze vstupu) by měla být volná
+        blocked_outputs = [pid for pid in output_places if self.has_token(pid)]
+        if blocked_outputs:
+            print(f"[PetriNet.complete_transition] Transition {transition_id} blocked: output places {blocked_outputs} have tokens")
+            # Pro input-output link pairs: zkontrolujeme, zda jsou to různá místa stejného objektu
+            # Pokud ano, měli bychom povolit dokončení (token byl odebrán ze vstupu při aktivaci)
+            input_places = self.get_input_places(transition_id)
+            input_place_objects = {self.places[pid].object_id for pid in input_places if pid in self.places}
+            output_place_objects = {self.places[pid].object_id for pid in output_places if pid in self.places}
+            
+            # Pokud jsou vstupní a výstupní místa ze stejného objektu, povolíme dokončení
+            if input_place_objects & output_place_objects:
+                print(f"[PetriNet.complete_transition] Input-output link pair detected for same object, allowing completion")
+            else:
+                return False
+            
+        # Přidáme tokeny do výstupních míst
+        output_arcs = [arc for arc in self.arcs if arc.transition_id == transition_id and arc.arc_type == "output"]
+        print(f"[PetriNet.complete_transition] Adding tokens to {len(output_arcs)} output places:")
+        for arc in output_arcs:
+            place = self.places.get(arc.place_id)
+            place_label = place.label if place else arc.place_id
+            print(f"  - {place_label} (place_id={arc.place_id})")
+            self.set_token(arc.place_id, True)
                 
         return True
         

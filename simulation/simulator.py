@@ -25,11 +25,22 @@ class SimulationEngine(QObject):
         # Mapování place_id -> grafické prvky pro vizualizaci
         self.place_to_items: Dict[str, List] = {}
         
+        # Mapování transition_id -> ProcessItem pro vizualizaci tokenů na procesech
+        self.transition_to_process: Dict[str, List] = {}
+        
+        # Aktuálně aktivní přechod (pro dvoufázový průchod)
+        self.active_transition: Optional[str] = None
+        
     def build_net(self):
         """Vytvoří Petriho síť z aktuálního diagramu."""
         self.net = build_petri_net_from_scene(self.scene)
         self._build_place_mapping()
+        self._build_transition_mapping()
         self._initialize_initial_marking()
+        self.active_transition = None  # Reset aktivního přechodu
+        # Resetujeme tokeny na procesech
+        for transition_id in self.transition_to_process.keys():
+            self._set_process_token(transition_id, False)
         self.marking_changed.emit()
         
     def _build_place_mapping(self):
@@ -79,6 +90,30 @@ class SimulationEngine(QObject):
                 print(f"[Simulator] WARNING: No items found for place {place_id} (object_id={place.object_id}, state_label={place.state_label})")
                         
             self.place_to_items[place_id] = items
+    
+    def _build_transition_mapping(self):
+        """Vytvoří mapování mezi přechody a grafickými procesy."""
+        if not self.net:
+            return
+            
+        self.transition_to_process = {}
+        
+        for transition_id, transition in self.net.transitions.items():
+            processes = []
+            
+            # Najdi proces podle process_id
+            from graphics.nodes import ProcessItem
+            
+            # Projdi všechny top-level items ve scéně
+            for item in self.scene.items():
+                if isinstance(item, ProcessItem) and item.node_id == transition.process_id:
+                    processes.append(item)
+                    print(f"[Simulator] Mapped transition {transition_id} to ProcessItem '{item.label}'")
+            
+            if not processes:
+                print(f"[Simulator] WARNING: No ProcessItem found for transition {transition_id} (process_id={transition.process_id})")
+                
+            self.transition_to_process[transition_id] = processes
             
     def _initialize_initial_marking(self):
         """Inicializuje počáteční označení sítě.
@@ -119,28 +154,67 @@ class SimulationEngine(QObject):
         self.timer.stop()
         
     def step(self):
-        """Provede jeden simulační krok."""
+        """Provede jeden simulační krok (dvoufázový průchod).
+        
+        Pokud je nějaký přechod aktivní (má token na procesu), dokončí ho.
+        Jinak aktivuje nový přechod (odebere tokeny ze vstupů, přidá token na proces).
+        """
         if not self.net:
             print("[Simulator] No net built")
             return False
-            
-        fireable = self.net.get_fireable_transitions()
-        if not fireable:
-            print(f"[Simulator] No fireable transitions. Enabled: {self.net.get_enabled_transitions()}")
+        
+        # Pokud je nějaký přechod aktivní, dokončíme ho
+        if self.active_transition:
+            transition_id = self.active_transition
+            print(f"[Simulator] Completing transition: {transition_id}")
+            if self.net.complete_transition(transition_id):
+                print(f"[Simulator] Transition completed successfully")
+                # Odebereme token z procesu
+                self._set_process_token(transition_id, False)
+                self.transition_fired.emit(transition_id)
+                self.active_transition = None
+                self.marking_changed.emit()
+                return True
+            else:
+                print(f"[Simulator] Failed to complete transition")
+                # Pokud se nepodařilo dokončit, zrušíme aktivní přechod
+                self._set_process_token(transition_id, False)
+                self.active_transition = None
+                return False
+        
+        # Jinak aktivujeme nový přechod
+        # Pro dvoufázový průchod kontrolujeme jen enabled transitions, ne fireable
+        # (protože výstupní místa se uvolní až po aktivaci pro input-output link pairs)
+        enabled = self.net.get_enabled_transitions()
+        if not enabled:
+            print(f"[Simulator] No enabled transitions")
             return False  # Žádný přechod nemůže proběhnout
             
-        # Vybereme první dostupný přechod (lze změnit na náhodný výběr)
-        transition_id = fireable[0]
-        print(f"[Simulator] Firing transition: {transition_id}")
-        if self.net.fire_transition(transition_id):
-            print(f"[Simulator] Transition fired successfully")
-            self.transition_fired.emit(transition_id)
+        # Vybereme první aktivní přechod (lze změnit na náhodný výběr)
+        transition_id = enabled[0]
+        print(f"[Simulator] Activating transition: {transition_id}")
+        if self.net.activate_transition(transition_id):
+            print(f"[Simulator] Transition activated successfully")
+            # Přidáme token na proces
+            self._set_process_token(transition_id, True)
+            self.active_transition = transition_id
             self.marking_changed.emit()
             return True
         else:
-            print(f"[Simulator] Failed to fire transition")
+            print(f"[Simulator] Failed to activate transition")
             
         return False
+    
+    def _set_process_token(self, transition_id: str, has_token: bool):
+        """Nastaví token na procesu pro daný přechod."""
+        processes = self.transition_to_process.get(transition_id, [])
+        for process in processes:
+            if hasattr(process, 'has_token'):
+                process.has_token = has_token
+                if process.scene():
+                    scene_rect = process.mapToScene(process.boundingRect()).boundingRect()
+                    process.scene().update(scene_rect)
+                process.update()
         
     def _step(self):
         """Interní krok pro timer."""
@@ -155,6 +229,10 @@ class SimulationEngine(QObject):
             # Resetujeme na prázdné označení
             for place_id in self.net.places.keys():
                 self.net.set_token(place_id, False)
+            # Resetujeme tokeny na procesech
+            for transition_id in self.transition_to_process.keys():
+                self._set_process_token(transition_id, False)
+            self.active_transition = None
             self.marking_changed.emit()
             
     def get_marking(self) -> Dict[str, bool]:

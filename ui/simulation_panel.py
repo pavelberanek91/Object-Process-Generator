@@ -176,10 +176,11 @@ class SimulationPanel(QDockWidget):
         self.btn_export_gif.setEnabled(True)
         self._build_tokens_list()
         
-        # Resetuje tokeny na prázdné
+        # Resetuje tokeny na prázdné (build_net už volá reset(), ale pro jistotu)
         if self.simulator.net:
             for place_id in self.simulator.net.places.keys():
                 self.simulator.net.set_token(place_id, False)
+            # Tokeny na procesech se resetují v simulator.reset(), který se volá v build_net()
             if hasattr(self, 'marking_changed'):
                 self.marking_changed()
         

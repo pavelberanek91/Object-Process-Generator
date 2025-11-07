@@ -138,7 +138,8 @@ def build_petri_net_from_scene(scene) -> PetriNet:
                             arc_type="input"
                         )
                         net.add_arc(arc)
-                        print(f"[Converter] Added consumption arc: {obj.label} ({place_id}) → {dst_process.label}")
+                        state_info = f" at state {state_label}" if state_label else ""
+                        print(f"[Converter] Added consumption arc: {obj.label}{state_info} ({place_id}) → {dst_process.label}")
             elif src_process and isinstance(dst, (ObjectItem, StateItem)):
                 # Proces k objektu/stavu: proces spotřebovává objekt (alternativní směr)
                 obj, state_label = _get_object_and_state(dst)
@@ -167,7 +168,8 @@ def build_petri_net_from_scene(scene) -> PetriNet:
                             arc_type="output"
                         )
                         net.add_arc(arc)
-                        print(f"[Converter] Added result arc: {src_process.label} → {obj.label} ({place_id})")
+                        state_info = f" at state {state_label}" if state_label else ""
+                        print(f"[Converter] Added result arc: {src_process.label} → {obj.label}{state_info} ({place_id})")
             elif isinstance(src, (ObjectItem, StateItem)) and dst_process:
                 # Objekt/stav k procesu: proces vytváří objekt (alternativní směr)
                 obj, state_label = _get_object_and_state(src)
