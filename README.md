@@ -1,16 +1,17 @@
 # OpenOPM Editor
 
 ---
-
+Pro spuštění OpenOPM si můžete vybrat buď stažení přepřipraveného binárního souboru (.exe pro windows, .app pro mac) nebo spustit si kód pomocí interpretru Pythonu.
 
 ## 1. Instalace OpenOPM
 
 Odkazy na vydání:
 
-- Windows v0.0.1: [ODKAZ](https://github.com/pavelberanek91/Object-Process-Generator/releases/tag/PreWindowsRelease)
-- Mac v0.0.1: [ODKAZ](https://github.com/pavelberanek91/Object-Process-Generator/releases/tag/PreMacRelease)
+- Windows v0.0.1: [ODKAZ](https://github.com/pavelberanek91/Object-Process-Generator/releases/tag/PreWindowsRelease) (stáhněte app.exe)
+- Mac v0.0.1: [ODKAZ](https://github.com/pavelberanek91/Object-Process-Generator/releases/tag/PreMacRelease) (stáhněte app.app.zip a rozbalte)
+- Linux: aktuálně si musíte projekt spustit přes interpretr Pythonu
 
-
+Pokud nebude fungovat spuštění binárního souboru, budete muset projekt stáhnout a spustit přes interpretr po nainstalovaní všech potřebných závislostí.
 
 ## 2. Tvorba OPD diagramu
 
