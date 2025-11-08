@@ -37,4 +37,4 @@ Zde naleznete video-tutoriál na platformě Youtube, který ukazuje způsoby ulo
 
 Zde naleznete video-tutoriál na platformě Youtube, který ukazuje mechanismus otevření procesu v diagramu a tvorbu dílčích podprocesů.
 
-[Tutoriál na zoomin]()
+[Tutoriál na zoomin](https://youtu.be/Pvu9YwiuJbA)
