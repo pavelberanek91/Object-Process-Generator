@@ -1,12 +1,14 @@
 # Tutoriál pro OPM Editor
 
+---
+
+
+## 1. Instalace OpenOPM
+
 Odkazy na vydání:
 
 Windows v0.0.1: [ODKAZ](https://github.com/pavelberanek91/Object-Process-Generator/releases/tag/PreWindowsRelease)
 Mac v0.0.1: 
----
-
-## 1. Instalace OpenOPM
 
 
 
