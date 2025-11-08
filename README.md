@@ -13,7 +13,7 @@ Odkazy na vydání:
 
 Pokud nebude fungovat spuštění binárního souboru, budete muset projekt stáhnout a spustit přes interpretr po nainstalovaní všech potřebných závislostí.
 
-[Tutoriál na spuštění]()
+[Tutoriál na spuštění](https://youtu.be/pb2FyM6zBGE)
 
 ## 2. Tvorba OPD diagramu
 
