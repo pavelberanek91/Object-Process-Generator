@@ -1,4 +1,4 @@
-# Tutoriál pro OPM Editor
+# OpenOPM Editor
 
 ---
 
