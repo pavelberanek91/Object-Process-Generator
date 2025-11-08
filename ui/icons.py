@@ -126,7 +126,7 @@ def icon_shape(kind: str, size: int = 22) -> QIcon:
 
     if kind == "object":
         r = QRectF(3, 4, size - 6, size - 8)
-        p.drawRoundedRect(r, 4, 4)
+        p.drawRect(r)
 
     elif kind == "process":
         r = QRectF(3, 4, size - 6, size - 8)

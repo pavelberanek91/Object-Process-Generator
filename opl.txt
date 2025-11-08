@@ -1,4 +1,0 @@
-P1 consumes C.
-P1 takes F, E and A as input.
-P1 yields B.
-C generalizes B.
