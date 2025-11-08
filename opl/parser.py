@@ -123,23 +123,51 @@ def build_from_opl(app, text: str):
             affiliation_of[it.label] = getattr(it, 'affiliation', 'systemic')
 
     # === Určení pozice pro nové prvky ===
-    # Nové prvky se umístí vpravo od existujícího diagramu
-    items_rect = scene.itemsBoundingRect() if scene.items() else QRectF(-200, -150, 400, 300)
-    base_x = items_rect.right() + 150  # X souřadnice "nové oblasti"
+    # Pokud není žádný prvek, použijeme střed aktuálního viewportu
+    # Jinak umístíme prvky vpravo od existujícího diagramu
+    base_y = 0  # Inicializace pro případ, že jsou prvky na scéně
+    if scene.items():
+        items_rect = scene.itemsBoundingRect()
+        base_x = items_rect.right() + 150  # X souřadnice "nové oblasti"
+    else:
+        # Žádné prvky - použijeme střed viewportu
+        if hasattr(app, 'view') and app.view is not None:
+            # Získání viewportu ve scénových souřadnicích
+            viewport_rect = app.view.viewport().rect()
+            top_left = app.view.mapToScene(viewport_rect.topLeft())
+            bottom_right = app.view.mapToScene(viewport_rect.bottomRight())
+            viewport_center_x = (top_left.x() + bottom_right.x()) / 2
+            viewport_center_y = (top_left.y() + bottom_right.y()) / 2
+            base_x = viewport_center_x
+            base_y = viewport_center_y
+        else:
+            # Fallback - střed plátna
+            base_x = 0
+            base_y = 0
     proc_i = 0  # Index pro rozestup procesů
     obj_i = 0   # Index pro rozestup objektů
 
     def next_proc_pos():
         """Vrátí další pozici pro nový proces (nahoře v řadě)."""
         nonlocal proc_i
-        p = app.snap(QPointF(base_x + proc_i * 200, -150))
+        if scene.items():
+            # Existují prvky - umístíme vpravo od nich
+            p = app.snap(QPointF(base_x + proc_i * 200, -150))
+        else:
+            # Žádné prvky - umístíme do středu viewportu s rozestupem
+            p = app.snap(QPointF(base_x + proc_i * 200, base_y - 150))
         proc_i += 1
         return p
 
     def next_obj_pos():
         """Vrátí další pozici pro nový objekt (dole v řadě)."""
         nonlocal obj_i
-        p = app.snap(QPointF(base_x + obj_i * 200, 130))
+        if scene.items():
+            # Existují prvky - umístíme vpravo od nich
+            p = app.snap(QPointF(base_x + obj_i * 200, 130))
+        else:
+            # Žádné prvky - umístíme do středu viewportu s rozestupem
+            p = app.snap(QPointF(base_x + obj_i * 200, base_y + 130))
         obj_i += 1
         return p
 

@@ -1,8 +1,10 @@
 """Modul pro převod přirozeného jazyka (NL) na OPL věty pomocí AI/LLM."""
 import re
 import sys
+import os
 from pathlib import Path
 from dataclasses import dataclass
+from typing import Optional
 # LangChain framework pro práci s LLM
 from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -55,7 +57,7 @@ def build_prompt() -> ChatPromptTemplate:
     return ChatPromptTemplate.from_messages([("system", sys_prompt), ("human", usr_prompt)])
 
 
-def nl_to_opl(nl_text: str, model: str = "gpt-5-chat-latest", temperature: float = 0.0) -> str:
+def nl_to_opl(nl_text: str, model: str = "gpt-5-chat-latest", temperature: float = 0.0, api_key: Optional[str] = None) -> str:
     """
     Převede přirozený jazyk (CZ/EN) na OPL věty pomocí LLM (LangChain + OpenAI).
     
@@ -65,15 +67,35 @@ def nl_to_opl(nl_text: str, model: str = "gpt-5-chat-latest", temperature: float
         nl_text: Text v přirozeném jazyce popisující proces/vztahy
         model: Název OpenAI modelu (výchozí "gpt-5-chat-latest")
         temperature: Teplota pro generování (0.0 = deterministické, 1.0 = kreativní)
+        api_key: OpenAI API klíč (pokud není zadán, použije se z prostředí nebo APIKeyManager)
     
     Returns:
         OPL věty, každá na novém řádku
     """
+    # Získání API klíče - priorita: parametr > APIKeyManager > prostředí
+    if api_key is None:
+        from ai.api_key_manager import APIKeyManager
+        api_key = APIKeyManager().get_api_key()
+    
+    # Pokud stále není klíč, zkus z prostředí
+    if api_key is None:
+        api_key = os.getenv("OPENAI_API_KEY")
+    
+    # Pokud stále není klíč, vyvolat výjimku s jasnou hláškou
+    if not api_key:
+        raise ValueError(
+            "OpenAI API klíč není nastaven. Pro generování OPL pomocí AI je nutné nastavit API klíč.\n"
+            "Klíč můžete nastavit pomocí tlačítka 'Nastavit API klíč' v dialogu."
+        )
+    
     # Sestavení prompt šablony a inicializace LLM
     prompt = build_prompt()
-    llm = ChatOpenAI(model=model, temperature=temperature)
+    # Dočasně nastavit API klíč do prostředí (ChatOpenAI ho načte z prostředí)
+    old_key = os.environ.get("OPENAI_API_KEY")
+    os.environ["OPENAI_API_KEY"] = api_key
     
     try:
+        llm = ChatOpenAI(model=model, temperature=temperature)
         # Zavolání LLM chain: prompt | llm
         resp = (prompt | llm).invoke({"nl": nl_text})
         content = getattr(resp, "content", "").strip()
@@ -85,6 +107,12 @@ def nl_to_opl(nl_text: str, model: str = "gpt-5-chat-latest", temperature: float
         # Při chybě připojení k LLM použijeme heuristický fallback
         # TODO: dopsat upozornění do GUI, že byl problém s připojením
         return heuristic_fallback(nl_text)
+    finally:
+        # Obnovit původní hodnotu prostředí
+        if old_key is not None:
+            os.environ["OPENAI_API_KEY"] = old_key
+        elif "OPENAI_API_KEY" in os.environ:
+            del os.environ["OPENAI_API_KEY"]
 
 
 def heuristic_fallback(nl: str) -> str:
