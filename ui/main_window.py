@@ -54,7 +54,7 @@ class MainWindow(QMainWindow):
         self.mode = Mode.SELECT
         self._scale = 1.0
         self.pending_link_src: Optional[QGraphicsItem] = None
-        self.default_link_type = LINK_TYPES[0]
+        self.default_link_type = "consumption/result"  # Výchozí typ vazby
         self._suppress_combo = False
         
         # Undo stack
@@ -894,10 +894,37 @@ class MainWindow(QMainWindow):
     
     # ========== Link operations ==========
     
+    def _determine_consumption_result_type(self, src_item: QGraphicsItem, dst_item: QGraphicsItem) -> str:
+        """Automaticky určí typ vazby (consumption nebo result) podle zdroje a cíle.
+        
+        Pokud je zdrojem Objekt nebo jeho Stav a cílem Proces, pak se jedná o consumption.
+        Pokud je zdrojem Proces a cílem Objekt nebo jeho Stav, pak je to result.
+        """
+        src_is_object_or_state = isinstance(src_item, (ObjectItem, StateItem))
+        dst_is_process = isinstance(dst_item, ProcessItem)
+        src_is_process = isinstance(src_item, ProcessItem)
+        dst_is_object_or_state = isinstance(dst_item, (ObjectItem, StateItem))
+        
+        if src_is_object_or_state and dst_is_process:
+            return "consumption"
+        elif src_is_process and dst_is_object_or_state:
+            return "result"
+        # Pokud není žádná z těchto kombinací, vrátíme výchozí hodnotu
+        return "consumption"
+    
+    def _resolve_link_type(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> str:
+        """Převede 'consumption/result' na konkrétní typ podle zdroje a cíle."""
+        if link_type == "consumption/result":
+            return self._determine_consumption_result_type(src_item, dst_item)
+        return link_type
+    
     def allowed_link(self, src_item: QGraphicsItem, dst_item: QGraphicsItem, link_type: str) -> tuple[bool, str]:
         """Kontroluje, zda je link povolen."""
+        # Pokud je to consumption/result, převedeme na konkrétní typ pro validaci
+        resolved_type = self._resolve_link_type(src_item, dst_item, link_type)
+        
         # Kontrola pro strukturální vztahy
-        if link_type in STRUCTURAL_TYPES:
+        if resolved_type in STRUCTURAL_TYPES:
             # Strukturální vztahy mohou být pouze mezi stejnými typy uzlů
             src_is_process = isinstance(src_item, ProcessItem)
             src_is_object = isinstance(src_item, ObjectItem)
@@ -905,7 +932,7 @@ class MainWindow(QMainWindow):
             dst_is_object = isinstance(dst_item, ObjectItem)
             
             # Exhibition může být mezi libovolnými uzly (objekt-objekt, proces-proces, objekt-proces)
-            if link_type == "exhibition":
+            if resolved_type == "exhibition":
                 if (src_is_process or src_is_object) and (dst_is_process or dst_is_object):
                     return True, ""
             
@@ -915,7 +942,7 @@ class MainWindow(QMainWindow):
             elif src_is_object and dst_is_object:
                 return True, ""
             else:
-                return False, f"Strukturální vztah '{link_type}' může být pouze mezi stejnými typy uzlů (proces-proces nebo objekt-objekt)."
+                return False, f"Strukturální vztah '{resolved_type}' může být pouze mezi stejnými typy uzlů (proces-proces nebo objekt-objekt)."
         
         # Procedurální vazby - zatím bez omezení
         return True, ""
@@ -944,13 +971,16 @@ class MainWindow(QMainWindow):
                 self.pending_link_src = None
                 return
             
+            # Automaticky určíme typ vazby, pokud je to consumption/result
+            resolved_link_type = self._resolve_link_type(self.pending_link_src, item, self.default_link_type)
+            
             ok, msg = self.allowed_link(self.pending_link_src, item, self.default_link_type)
             if not ok:
                 QMessageBox.warning(self, "Neplatná vazba", msg)
                 self.pending_link_src = None
                 return
 
-            self.scene.addItem(LinkItem(self.pending_link_src, item, self.default_link_type))
+            self.scene.addItem(LinkItem(self.pending_link_src, item, resolved_link_type))
             self.pending_link_src = None
             self.statusBar().clearMessage()
 
@@ -1135,20 +1165,21 @@ class MainWindow(QMainWindow):
                     return
         
         # Rychlé přepínání typu linku čísly
-        if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4, Qt.Key_5):
+        if event.key() in (Qt.Key_1, Qt.Key_2, Qt.Key_3, Qt.Key_4):
             mapping = {
-                Qt.Key_1: "consumption",
-                Qt.Key_2: "result",
-                Qt.Key_3: "effect",
-                Qt.Key_4: "agent",
-                Qt.Key_5: "instrument",
+                Qt.Key_1: "consumption/result",
+                Qt.Key_2: "effect",
+                Qt.Key_3: "agent",
+                Qt.Key_4: "instrument",
             }
             lt = mapping.get(event.key())
             sel = [it for it in self.scene.selectedItems() if isinstance(it, LinkItem)]
             
             if sel:
                 for ln in sel:
-                    ln.set_link_type(lt)
+                    # Pokud je to consumption/result, převedeme na konkrétní typ podle zdroje a cíle
+                    resolved_type = self._resolve_link_type(ln.src, ln.dst, lt)
+                    ln.set_link_type(resolved_type)
                 self.update_properties_panel()
             else:
                 # Když není nic vybráno, nastaví se default pro další link

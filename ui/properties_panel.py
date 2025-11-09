@@ -57,13 +57,13 @@ class PropertiesPanel(QDockWidget):
         self.cmb_link_type.addItem("─── Procedural ───")
         self.cmb_link_type.model().item(0).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
-            "consumption", "result", "effect", "agent", "instrument"
+            "consumption/result", "effect", "agent", "instrument"
         ])
         
         # Přidej oddělovač a strukturální linky
-        self.cmb_link_type.insertSeparator(6)  # Po 5 procedurálních + 1 nadpis
+        self.cmb_link_type.insertSeparator(5)  # Po 4 procedurálních + 1 nadpis
         self.cmb_link_type.addItem("─── Structural ───")
-        self.cmb_link_type.model().item(7).setEnabled(False)  # Zakáže výběr nadpisu
+        self.cmb_link_type.model().item(6).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
             "aggregation", "exhibition", "generalization", "instantiation"
         ])
@@ -179,7 +179,11 @@ class PropertiesPanel(QDockWidget):
             
             self.lbl_link_type.show()
             self.cmb_link_type.show()
-            self.cmb_link_type.setCurrentText(it.link_type)
+            # Pokud je to consumption nebo result, zobrazíme jako consumption/result
+            display_type = it.link_type
+            if it.link_type in ("consumption", "result"):
+                display_type = "consumption/result"
+            self.cmb_link_type.setCurrentText(display_type)
             
             # Kardinality jen pro určité typy linků
             if it.link_type in {"aggregation", "exhibition", "generalization", "instantiation"}:
@@ -210,7 +214,11 @@ class PropertiesPanel(QDockWidget):
         links = [x for x in sel if isinstance(x, LinkItem)]
         self.main_window._suppress_combo = True
         if links:
-            self.cmb_link_type.setCurrentText(links[0].link_type)
+            # Pokud je to consumption nebo result, zobrazíme jako consumption/result
+            display_type = links[0].link_type
+            if links[0].link_type in ("consumption", "result"):
+                display_type = "consumption/result"
+            self.cmb_link_type.setCurrentText(display_type)
             self.lbl_link_type.setText("Link type (selected links)")
         else:
             self.cmb_link_type.setCurrentText(self.main_window.default_link_type)
@@ -312,11 +320,17 @@ class PropertiesPanel(QDockWidget):
                 
         if invalid:
             self.main_window._suppress_combo = True
-            self.cmb_link_type.setCurrentText(links[0].link_type)
+            # Pokud je to consumption nebo result, zobrazíme jako consumption/result
+            display_type = links[0].link_type
+            if links[0].link_type in ("consumption", "result"):
+                display_type = "consumption/result"
+            self.cmb_link_type.setCurrentText(display_type)
             self.main_window._suppress_combo = False
             QMessageBox.warning(self, "Neplatný typ vazby", invalid[0])
             return
             
         for ln in links:
-            ln.set_link_type(text)
+            # Pokud je to consumption/result, převedeme na konkrétní typ podle zdroje a cíle
+            resolved_type = self.main_window._resolve_link_type(ln.src, ln.dst, text)
+            ln.set_link_type(resolved_type)
 
