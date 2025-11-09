@@ -96,7 +96,11 @@ class PetriNet:
         return all(self.has_token(pid) for pid in input_places)
         
     def can_fire(self, transition_id: str) -> bool:
-        """Zkontroluje, zda může přechod proběhnout (je aktivní + výstupy jsou volné)."""
+        """Zkontroluje, zda může přechod proběhnout (je aktivní + výstupy jsou volné).
+        
+        Pro input-output link pairs (stejný objekt, různé stavy) je důležité,
+        že po odebrání tokenu ze vstupního stavu bude výstupní stav volný.
+        """
         if not self.is_enabled(transition_id):
             return False
             
@@ -105,7 +109,24 @@ class PetriNet:
         # Pokud přechod nemá výstupní místa, nemůže proběhnout (pro C/E sítě)
         if not output_places:
             return False  # Přechod bez výstupů není validní pro C/E síť
-        return all(not self.has_token(pid) for pid in output_places)
+        
+        # Zkontrolujeme, zda jsou výstupní místa volná
+        blocked_outputs = [pid for pid in output_places if self.has_token(pid)]
+        if not blocked_outputs:
+            return True  # Všechna výstupní místa jsou volná
+        
+        # Pro input-output link pairs: zkontrolujeme, zda jsou to různá místa stejného objektu
+        # Pokud ano, povolíme provedení (token bude odebrán ze vstupu před přidáním do výstupu)
+        input_places = self.get_input_places(transition_id)
+        input_place_objects = {self.places[pid].object_id for pid in input_places if pid in self.places}
+        output_place_objects = {self.places[pid].object_id for pid in output_places if pid in self.places}
+        
+        # Pokud jsou vstupní a výstupní místa ze stejného objektu, povolíme provedení
+        if input_place_objects & output_place_objects:
+            print(f"[PetriNet.can_fire] Input-output link pair detected for same object, allowing fire")
+            return True
+        
+        return False
         
     def fire_transition(self, transition_id: str) -> bool:
         """Provede přechod (pokud je to možné) - původní jednofázová verze.

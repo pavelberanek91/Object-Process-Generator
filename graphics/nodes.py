@@ -215,9 +215,6 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(Qt.black, 2))
         self._init_resize()  # Přidá resize handles
-        
-        # Simulace: token v procesu (pro dvoufázový průchod)
-        self.has_token = False
 
     def itemChange(self, change, value):
         res = super().itemChange(change, value)
@@ -271,16 +268,6 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         painter.setFont(font)
         painter.setPen(Qt.black)
         painter.drawText(self.rect(), Qt.AlignCenter, self.label)
-        
-        # Vykresli token (červený kruh) pokud má proces token
-        if self.has_token:
-            # Token nad středem procesu, aby byl vidět název
-            center = self.rect().center()
-            token_rect = QRectF(center.x() - 8, center.y() - 20, 16, 16)  # Posunuto nahoru o 12 pixelů
-            token_red = QColor(220, 50, 50)  # Výrazná, ale ne agresivní červená
-            painter.setBrush(QBrush(token_red))
-            painter.setPen(Qt.NoPen)
-            painter.drawEllipse(token_rect)
 
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 2, Qt.DashLine)
