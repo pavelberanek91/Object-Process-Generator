@@ -32,6 +32,7 @@ class SimulationPanel(QDockWidget):
         self.main_window = parent
         self.simulator: Optional[SimulationEngine] = None
         self.token_checkboxes: Dict[str, QCheckBox] = {}  # place_id -> checkbox
+        self.net_enabled = False  # Flag pro to, zda je Petriho síť aktivní
         self._init_ui()
         
     def _init_ui(self):
@@ -39,10 +40,17 @@ class SimulationPanel(QDockWidget):
         widget = QWidget(self)
         layout = QVBoxLayout(widget)
         
-        # Tlačítko Reset (build + reset)
-        self.btn_reset = QPushButton("Reset", self)
-        self.btn_reset.clicked.connect(self._on_reset)
-        layout.addWidget(self.btn_reset)
+        # Tlačítka pro build/reset a disable
+        net_layout = QHBoxLayout()
+        self.btn_build_reset = QPushButton("Build/Reset", self)
+        self.btn_build_reset.clicked.connect(self._on_build_reset)
+        net_layout.addWidget(self.btn_build_reset)
+        
+        self.btn_disable = QPushButton("Disable", self)
+        self.btn_disable.clicked.connect(self._on_disable)
+        self.btn_disable.setEnabled(False)
+        net_layout.addWidget(self.btn_disable)
+        layout.addLayout(net_layout)
         
         # Tlačítka pro simulaci
         sim_layout = QHBoxLayout()
@@ -143,10 +151,10 @@ class SimulationPanel(QDockWidget):
             # Vytvoříme vlastní wrapper pro emitování signálu
             self.marking_changed = lambda: simulator.marking_changed.emit()
             
-    def _on_reset(self):
+    def _on_build_reset(self):
         """Vytvoří Petriho síť z diagramu a resetuje simulaci."""
         if not self.main_window or not self.main_window.scene:
-            print("[UI] WARNING: Cannot reset - no main_window or scene")
+            print("[UI] WARNING: Cannot build - no main_window or scene")
             return
         
         # Vždy aktualizujeme referenci na scénu (může se změnit po importu JSONu)
@@ -157,7 +165,7 @@ class SimulationPanel(QDockWidget):
             # Aktualizujeme referenci na scénu (může se změnit po importu)
             self.simulator.scene = self.main_window.scene
         
-        print(f"[UI] Resetting simulation. Scene has {len(self.main_window.scene.items())} items")
+        print(f"[UI] Building Petri net. Scene has {len(self.main_window.scene.items())} items")
         
         # Vytvoří nebo obnoví síť
         self.simulator.build_net()
@@ -165,15 +173,19 @@ class SimulationPanel(QDockWidget):
         if not self.simulator.net:
             print("[UI] ERROR: Failed to build Petri net")
             self.lbl_status.setText("Status: Build failed")
+            self.net_enabled = False
+            self.btn_disable.setEnabled(False)
             return
         
         print(f"[UI] Petri net built: {len(self.simulator.net.places)} places, {len(self.simulator.net.transitions)} transitions")
         print(f"[UI] Place mapping: {len(self.simulator.place_to_items)} mappings")
         
+        self.net_enabled = True
         self.lbl_status.setText("Status: Built")
         self.btn_step.setEnabled(True)
         self.btn_play.setEnabled(True)
         self.btn_export_gif.setEnabled(True)
+        self.btn_disable.setEnabled(True)
         self._build_tokens_list()
         
         # Resetuje tokeny na prázdné (build_net už volá reset(), ale pro jistotu)
@@ -185,6 +197,44 @@ class SimulationPanel(QDockWidget):
         
         self._update_token_checkboxes()
         self._update_lists()
+        self._update_process_colors()
+    
+    def _on_disable(self):
+        """Vypne Petriho síť - procesy se nebudou zvýrazňovat a tokeny zmizí."""
+        self.net_enabled = False
+        self.lbl_status.setText("Status: Disabled")
+        self.btn_step.setEnabled(False)
+        self.btn_play.setEnabled(False)
+        self.btn_pause.setEnabled(False)
+        self.btn_export_gif.setEnabled(False)
+        self.btn_disable.setEnabled(False)
+        
+        # Zastav simulaci pokud běží
+        if self.simulator:
+            self.simulator.stop()
+        
+        # Resetuj tokeny - odeber všechny tokeny
+        if self.simulator and self.simulator.net:
+            for place_id in self.simulator.net.places.keys():
+                self.simulator.net.set_token(place_id, False)
+            
+            # Aktualizuj vizualizaci tokenů
+            marking = self.simulator.get_marking()
+            for place_id, has_token in marking.items():
+                items = self.simulator.place_to_items.get(place_id, [])
+                for item in items:
+                    if hasattr(item, 'has_token'):
+                        item.has_token = has_token
+                        if item.scene():
+                            scene_rect = item.mapToScene(item.boundingRect()).boundingRect()
+                            item.scene().update(scene_rect)
+                        item.update()
+        
+        # Aktualizuj barvy procesů (všechny budou bílé)
+        self._update_process_colors()
+        
+        # Aktualizuj checkboxy
+        self._update_token_checkboxes_silent()
             
     def _on_step(self):
         """Provede jeden krok simulace."""
@@ -265,9 +315,25 @@ class SimulationPanel(QDockWidget):
                         item.scene().update(scene_rect)
                     item.update()  # Překresli
         
+        # Aktualizuj barvy procesů
+        self._update_process_colors()
+        
         # Aktualizujeme checkboxy (bez emitování signálu, aby se nezacyklil)
         self._update_token_checkboxes_silent()
         self._update_lists()
+    
+    def _update_process_colors(self):
+        """Aktualizuje barvy všech procesů podle jejich stavu v Petriho síti."""
+        from graphics.nodes import ProcessItem
+        if not self.simulator or not self.simulator.scene:
+            return
+        
+        for item in self.simulator.scene.items():
+            if isinstance(item, ProcessItem):
+                if item.scene():
+                    scene_rect = item.mapToScene(item.boundingRect()).boundingRect()
+                    item.scene().update(scene_rect)
+                item.update()  # Překresli pro aktualizaci barvy
     
     def marking_changed(self):
         """Wrapper pro emitování signálu marking_changed."""
@@ -324,6 +390,9 @@ class SimulationPanel(QDockWidget):
                 item = QListWidgetItem(transition.label)
                 item.setForeground(Qt.red)  # Červeně pro zádrhely
                 self.list_blocked.addItem(item)
+        
+        # Aktualizuj barvy procesů po změně seznamů
+        self._update_process_colors()
                 
         # Pokud není žádný blokovaný, ale jsou enabled, zobrazíme informaci
         if not blocked and enabled:

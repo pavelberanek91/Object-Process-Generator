@@ -6,6 +6,7 @@ Implementuje tři typy uzlů:
 - StateItem: Malý obdélník uvnitř objektu (hnědý obrys)
 """
 from __future__ import annotations
+from typing import Optional
 from PySide6.QtCore import QRectF, Qt, QPointF
 from PySide6.QtGui import QBrush, QPen, QPainter, QColor, QFont
 from PySide6.QtWidgets import (
@@ -243,6 +244,43 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             return
         super().mouseDoubleClickEvent(event)
 
+    def _get_process_state(self) -> Optional[str]:
+        """Vrátí stav procesu v Petriho síti: 'fireable', 'waiting', 'blocked', nebo None pokud je síť vypnutá."""
+        try:
+            from ui.main_window import MainWindow
+            main_win = MainWindow.instance()
+            if not main_win:
+                return None
+            
+            # Najdi simulation panel
+            if not hasattr(main_win, 'dock_simulation'):
+                return None
+            
+            sim_panel = main_win.dock_simulation
+            # Pokud je síť vypnutá, vrať None
+            if not sim_panel or not sim_panel.net_enabled:
+                return None
+            
+            if not sim_panel.simulator or not sim_panel.simulator.net:
+                return None
+            
+            # Najdi transition_id pro tento proces
+            transition_id = f"transition_{self.node_id}"
+            if transition_id not in sim_panel.simulator.net.transitions:
+                return None
+            
+            # Zkontroluj stav přechodu
+            if sim_panel.simulator.net.can_fire(transition_id):
+                return 'fireable'
+            elif transition_id in sim_panel.simulator.get_blocked_transitions():
+                return 'blocked'
+            elif transition_id in sim_panel.simulator.get_waiting_transitions():
+                return 'waiting'
+            else:
+                return None
+        except Exception:
+            return None
+    
     def paint(self, painter: QPainter, option, widget=None):
         # Nastavení pera podle affiliation
         pen = QPen(QColor(0, 0, 128), 3)
@@ -258,9 +296,30 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             painter.setPen(Qt.NoPen)
             painter.drawEllipse(self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset))
         
-        # vykresli obrys (modrý)
+        # Zkontroluj stav procesu a nastav barvu pozadí podle stavu
+        # Barvy jsou harmonizované s barvami v seznamech panelu
+        state = self._get_process_state()
+        if state == 'fireable':
+            # Zelená pro fireable (harmonizováno s Qt.green v seznamu)
+            # Pro pozadí prvku použijeme světlejší variantu
+            fireable_green = QColor(200, 255, 200)  # Světle zelená
+            painter.setBrush(QBrush(fireable_green))
+        elif state == 'waiting':
+            # Žlutá pro čekající (harmonizováno s Qt.darkYellow v seznamu)
+            # Pro pozadí prvku použijeme světlejší variantu
+            waiting_yellow = QColor(255, 255, 200)  # Světle žlutá
+            painter.setBrush(QBrush(waiting_yellow))
+        elif state == 'blocked':
+            # Červená pro blokované (harmonizováno s Qt.red v seznamu)
+            # Pro pozadí prvku použijeme světlejší variantu
+            blocked_red = QColor(255, 200, 200)  # Světle červená
+            painter.setBrush(QBrush(blocked_red))
+        else:
+            # Normální bílá barva (síť vypnutá nebo proces není v žádném z těchto stavů)
+            painter.setBrush(self.brush())
+        
+        # vykresli obrys (modrý) a výplň
         painter.setPen(pen)
-        painter.setBrush(self.brush())
         painter.drawEllipse(self.rect())
 
         # vykresli text (černý)
