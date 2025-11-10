@@ -923,14 +923,15 @@ class MainWindow(QMainWindow):
         # Pokud je to consumption/result, převedeme na konkrétní typ pro validaci
         resolved_type = self._resolve_link_type(src_item, dst_item, link_type)
         
+        # Zjištění typů uzlů
+        src_is_process = isinstance(src_item, ProcessItem)
+        src_is_object = isinstance(src_item, ObjectItem)
+        dst_is_process = isinstance(dst_item, ProcessItem)
+        dst_is_object = isinstance(dst_item, ObjectItem)
+        
         # Kontrola pro strukturální vztahy
         if resolved_type in STRUCTURAL_TYPES:
             # Strukturální vztahy mohou být pouze mezi stejnými typy uzlů
-            src_is_process = isinstance(src_item, ProcessItem)
-            src_is_object = isinstance(src_item, ObjectItem)
-            dst_is_process = isinstance(dst_item, ProcessItem)
-            dst_is_object = isinstance(dst_item, ObjectItem)
-            
             # Exhibition může být mezi libovolnými uzly (objekt-objekt, proces-proces, objekt-proces)
             if resolved_type == "exhibition":
                 if (src_is_process or src_is_object) and (dst_is_process or dst_is_object):
@@ -944,7 +945,17 @@ class MainWindow(QMainWindow):
             else:
                 return False, f"Strukturální vztah '{resolved_type}' může být pouze mezi stejnými typy uzlů (proces-proces nebo objekt-objekt)."
         
-        # Procedurální vazby - zatím bez omezení
+        # Kontrola pro procedurální vazby
+        if resolved_type in PROCEDURAL_TYPES:
+            # Procedurální vazby NESMÍ být mezi stejnými typy uzlů (objekt-objekt nebo proces-proces)
+            if src_is_object and dst_is_object:
+                return False, f"Procedurální vazba '{resolved_type}' nemůže být mezi objekty. Procedurální vazby mohou být pouze mezi procesy a objekty."
+            if src_is_process and dst_is_process:
+                return False, f"Procedurální vazba '{resolved_type}' nemůže být mezi procesy. Procedurální vazby mohou být pouze mezi procesy a objekty."
+            # Procedurální vazby jsou povoleny mezi procesy a objekty (v libovolném směru)
+            return True, ""
+        
+        # Neznámý typ vazby - povolíme (pro jistotu)
         return True, ""
 
     def toggle_token(self, item):

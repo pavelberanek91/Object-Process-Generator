@@ -120,15 +120,18 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         # dostupná oblast pro text (pokud má stavy, posuneme text nahoru)
         states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
         rect_for_text = self.rect()
+        text_alignment = Qt.AlignCenter  # výchozí: uprostřed
         if states:
             st_h = states[0].rect().height() + 6  # výška stavů + mezera
-            rect_for_text = rect_for_text.adjusted(0, 0, 0, -st_h)
+            top_offset = 4  # odsazení od horního okraje (aby text nebyl přímo u okraje)
+            rect_for_text = rect_for_text.adjusted(0, top_offset, 0, -st_h)
+            text_alignment = Qt.AlignTop | Qt.AlignHCenter  # u horního konce, horizontálně uprostřed
 
         # text (tučný Arial, černý)
         font = QFont("Arial", 12, QFont.Bold)
         painter.setFont(font)
         painter.setPen(Qt.black)
-        painter.drawText(rect_for_text, Qt.AlignCenter, self.label)
+        painter.drawText(rect_for_text, text_alignment, self.label)
         
         # Vykresli token (červený kruh) pokud má objekt token a nemá stavy
         if self.has_token and not states:
