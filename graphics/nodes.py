@@ -7,7 +7,8 @@ Implementuje tři typy uzlů:
 """
 from __future__ import annotations
 from typing import Optional
-from PySide6.QtCore import QRectF, Qt, QPointF
+import math
+from PySide6.QtCore import QRectF, Qt, QPointF, QTimer
 from PySide6.QtGui import QBrush, QPen, QPainter, QColor, QFont
 from PySide6.QtWidgets import (
     QGraphicsItem, QGraphicsRectItem, QGraphicsEllipseItem, QStyle
@@ -219,6 +220,13 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(Qt.black, 2))
         self._init_resize()  # Přidá resize handles
+        
+        # Animace pro rozblikání při aktivaci přechodu
+        self._animation_timer = QTimer()
+        self._animation_timer.setSingleShot(False)
+        self._animation_timer.timeout.connect(self._animation_step)
+        self._animation_step_count = 0
+        self._is_animating = False
 
     def itemChange(self, change, value):
         res = super().itemChange(change, value)
@@ -302,16 +310,33 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         # Zkontroluj stav procesu a nastav barvu pozadí podle stavu
         # Barvy jsou harmonizované s barvami v seznamech panelu
         state = self._get_process_state()
-        if state == 'fireable':
+        
+        # Pokud probíhá animace, použijeme animační barvu
+        if self._is_animating:
+            # Animace: střídavě světlejší a tmavší žlutá (blikání)
+            # Použijeme sinusovou funkci pro plynulý přechod
+            # 6 kroků animace (0-5), každý krok = 50ms, celkem 300ms
+            intensity = abs(math.sin(self._animation_step_count * math.pi / 3))
+            # Příjemná žlutá barva s proměnnou intenzitou (světle žlutá -> trochu tmavší žlutá)
+            base_yellow = QColor(255, 255, 200)  # Světle žlutá (původní příjemná barva)
+            bright_yellow = QColor(255, 240, 150)  # Trochu tmavší, ale stále příjemná
+            # Interpolace mezi base a bright podle intensity
+            r = int(base_yellow.red() + (bright_yellow.red() - base_yellow.red()) * intensity)
+            g = int(base_yellow.green() + (bright_yellow.green() - base_yellow.green()) * intensity)
+            b = int(base_yellow.blue() + (bright_yellow.blue() - base_yellow.blue()) * intensity)
+            anim_color = QColor(r, g, b)
+            painter.setBrush(QBrush(anim_color))
+            # Zesílíme i obrys během animace (modrý, ale trochu světlejší)
+            pen.setWidth(4)
+            pen.setColor(QColor(0, 100, 200))
+        elif state == 'fireable':
             # Zelená pro fireable (harmonizováno s Qt.green v seznamu)
             # Pro pozadí prvku použijeme světlejší variantu
             fireable_green = QColor(200, 255, 200)  # Světle zelená
             painter.setBrush(QBrush(fireable_green))
         elif state == 'waiting':
-            # Žlutá pro čekající (harmonizováno s Qt.darkYellow v seznamu)
-            # Pro pozadí prvku použijeme světlejší variantu
-            waiting_yellow = QColor(255, 255, 200)  # Světle žlutá
-            painter.setBrush(QBrush(waiting_yellow))
+            # Bílá pro čekající (čekají na tokeny)
+            painter.setBrush(self.brush())  # Bílá barva
         elif state == 'blocked':
             # Červená pro blokované (harmonizováno s Qt.red v seznamu)
             # Pro pozadí prvku použijeme světlejší variantu
@@ -336,7 +361,37 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             sel.setCosmetic(True)
             painter.setPen(sel)
             painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(self.rect().adjusted(-6, -6, 6, 6)) 
+            painter.drawEllipse(self.rect().adjusted(-6, -6, 6, 6))
+    
+    def start_animation(self):
+        """Spustí krátkou animaci rozblikání procesu."""
+        if self._is_animating:
+            return  # Animace už probíhá
+        
+        self._is_animating = True
+        self._animation_step_count = 0
+        self._animation_timer.start(50)  # 50ms mezi kroky = 6 kroků = 300ms celkem
+    
+    def _animation_step(self):
+        """Krok animace - voláno každých 50ms."""
+        self._animation_step_count += 1
+        
+        # Aktualizuj vykreslení
+        if self.scene():
+            scene_rect = self.mapToScene(self.boundingRect()).boundingRect()
+            self.scene().update(scene_rect)
+        self.update()
+        
+        # Po 6 krocích (300ms) ukončíme animaci
+        if self._animation_step_count >= 6:
+            self._animation_timer.stop()
+            self._is_animating = False
+            self._animation_step_count = 0
+            # Finální aktualizace pro návrat k normálnímu stavu
+            if self.scene():
+                scene_rect = self.mapToScene(self.boundingRect()).boundingRect()
+                self.scene().update(scene_rect)
+            self.update() 
 
 
 class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):

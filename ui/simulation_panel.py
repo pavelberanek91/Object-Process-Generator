@@ -347,6 +347,19 @@ class SimulationPanel(QDockWidget):
         transition = self.simulator.net.transitions.get(transition_id)
         if transition:
             self.lbl_status.setText(f"Status: Fired {transition.label}")
+        
+        # Najdi odpovídající ProcessItem a spusť animaci
+        # transition_id má formát "transition_{node_id}"
+        if transition_id.startswith("transition_"):
+            process_node_id = transition_id.replace("transition_", "")
+            from graphics.nodes import ProcessItem
+            
+            # Najdi ProcessItem s odpovídajícím node_id
+            if self.simulator and self.simulator.scene:
+                for item in self.simulator.scene.items():
+                    if isinstance(item, ProcessItem) and item.node_id == process_node_id:
+                        item.start_animation()
+                        break
             
     def _update_lists(self):
         """Aktualizuje seznamy aktivních, čekajících a blokovaných přechodů."""
