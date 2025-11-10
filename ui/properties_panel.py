@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QPushButton,
     QCheckBox,
+    QMessageBox,
 )
 from constants import LINK_TYPES
 from graphics.nodes import ObjectItem, ProcessItem, StateItem
@@ -250,6 +251,16 @@ class PropertiesPanel(QDockWidget):
         new_text = self.ed_label.text().strip()
         if not new_text or new_text == item.label:
             return
+
+        # Validace duplicitních názvů stavů
+        from graphics.nodes import StateItem
+        if isinstance(item, StateItem):
+            is_duplicate, error_msg = self.main_window.has_duplicate_state_name(item, new_text)
+            if is_duplicate:
+                QMessageBox.warning(self, "Neplatný název stavu", error_msg)
+                # Obnov původní text v editoru
+                self.ed_label.setText(item.label)
+                return
 
         from undo.commands import SetLabelCommand
         cmd = SetLabelCommand(item, new_text)

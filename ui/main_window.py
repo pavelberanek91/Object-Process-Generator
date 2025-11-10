@@ -890,7 +890,9 @@ class MainWindow(QMainWindow):
         x = min(max(p.x()-STATE_W/2, r.left()+6), r.right()-STATE_W-6)
         y = min(max(p.y()-STATE_H/2, r.top()+6), r.bottom()-STATE_H-6)
         rect = QRectF(x, y, STATE_W, STATE_H)
-        self.push_cmd(AddStateCommand(self.scene, obj, rect, "State"))
+        # Vygeneruj unikátní název pro nový stav
+        unique_name = self.generate_unique_state_name(obj)
+        self.push_cmd(AddStateCommand(self.scene, obj, rect, unique_name))
     
     # ========== Link operations ==========
     
@@ -958,6 +960,60 @@ class MainWindow(QMainWindow):
         # Neznámý typ vazby - povolíme (pro jistotu)
         return True, ""
 
+    def generate_unique_state_name(self, obj: ObjectItem) -> str:
+        """
+        Vygeneruje unikátní název pro nový stav v objektu.
+        
+        Používá formát "s1", "s2", "s3", atd.
+        
+        Args:
+            obj: Objekt, do kterého se přidává stav
+        
+        Returns:
+            Unikátní název stavu
+        """
+        from graphics.nodes import StateItem
+        
+        # Získej všechny existující názvy stavů v objektu
+        existing_names = set()
+        for child in obj.childItems():
+            if isinstance(child, StateItem):
+                existing_names.add(child.label)
+        
+        # Najdi první volné číslo
+        counter = 1
+        while True:
+            candidate = f"s{counter}"
+            if candidate not in existing_names:
+                return candidate
+            counter += 1
+    
+    def has_duplicate_state_name(self, state_item: StateItem, new_name: str) -> tuple[bool, str]:
+        """
+        Zkontroluje, zda už existuje jiný stav se stejným názvem v objektu.
+        
+        Args:
+            state_item: Stav, jehož název se kontroluje
+            new_name: Nový název, který se kontroluje
+        
+        Returns:
+            Tuple (is_duplicate, error_message)
+        """
+        from graphics.nodes import StateItem, ObjectItem
+        
+        # Najdi rodičovský objekt
+        parent_obj = state_item.parentItem()
+        if not isinstance(parent_obj, ObjectItem):
+            return False, ""
+        
+        # Projdi všechny stavy v objektu
+        for child in parent_obj.childItems():
+            if isinstance(child, StateItem) and child is not state_item:
+                if child.label == new_name:
+                    return True, f"Stav s názvem '{new_name}' již existuje v objektu '{parent_obj.label}'. Dva stavy v objektu nemohou mít stejný název."
+        
+        return False, ""
+    
     def toggle_token(self, item):
         """Přepne token na objektu nebo stavu."""
         from graphics.nodes import ObjectItem, StateItem
