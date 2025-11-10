@@ -11,7 +11,7 @@ import math
 from typing import Tuple
 from pathlib import Path
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QPainterPath, QPen, QPainter, QPolygonF, QPixmap, QTransform
+from PySide6.QtGui import QPainterPath, QPen, QPainter, QPolygonF, QPixmap, QTransform, QFont
 from PySide6.QtWidgets import (
     QGraphicsPathItem, QGraphicsItem, QGraphicsSimpleTextItem, QGraphicsEllipseItem,
     QGraphicsRectItem, QStyle
@@ -98,6 +98,11 @@ class LabelHandle(QGraphicsSimpleTextItem):
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
+        # Nastav font 12 a tučný pro label
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
+        self.setFont(font)
 
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
@@ -153,10 +158,17 @@ class LinkItem(QGraphicsPathItem):
         self.ti_card_src = QGraphicsSimpleTextItem("", self)
         self.ti_card_src.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
         self.ti_card_src.setZValue(3)
+        # Nastav větší a tučnější font pro kardinality
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(12)  # Větší než výchozí (obvykle 9)
+        self.ti_card_src.setFont(font)
 
         self.ti_card_dst = QGraphicsSimpleTextItem("", self)
         self.ti_card_dst.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
         self.ti_card_dst.setZValue(3)
+        # Nastav větší a tučnější font pro kardinality
+        self.ti_card_dst.setFont(font)
         
         self.update_path()
 
@@ -239,16 +251,19 @@ class LinkItem(QGraphicsPathItem):
             L = math.hypot(v.x(), v.y()) or 1
             ux, uy = v.x()/L, v.y()/L
             
+            # Použijeme stejný offset pro obě kardinality, aby byly stejně vzdálené od objektů
+            card_offset = 25  # Vzdálenost od kotevního bodu na hraně objektu
+            
             if self.ti_card_src and self.card_src:
                 self.ti_card_src.setText(self.card_src)
-                # posun od začátku hrany, trochu dovnitř linku (t=0.15)
-                pos = QPointF(a.x() + ux*30, a.y() + uy*30)
+                # posun od začátku hrany, stejně jako u cíle
+                pos = QPointF(a.x() + ux*card_offset, a.y() + uy*card_offset)
                 self.ti_card_src.setPos(self.mapFromScene(pos))
                 
             if self.ti_card_dst and self.card_dst:
                 self.ti_card_dst.setText(self.card_dst)
-                # posun od konce hrany, trochu dovnitř linku (t=0.15)
-                pos = QPointF(b.x() - ux*30, b.y() - uy*30)
+                # posun od konce hrany, stejně jako u zdroje
+                pos = QPointF(b.x() - ux*card_offset, b.y() - uy*card_offset)
                 self.ti_card_dst.setPos(self.mapFromScene(pos))
         else:
             if self.ti_card_src: 
