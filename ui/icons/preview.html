@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Přehled ikon pro OPM Editor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #007acc;
+            padding-bottom: 10px;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .icon-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .icon-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+        .icon-display {
+            width: 48px;
+            height: 48px;
+            margin: 10px auto;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .icon-display img {
+            width: 32px;
+            height: 32px;
+        }
+        .icon-name {
+            font-weight: bold;
+            color: #007acc;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .icon-description {
+            color: #666;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .section {
+            margin-top: 40px;
+        }
+        .section h2 {
+            color: #555;
+            border-left: 4px solid #007acc;
+            padding-left: 10px;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Přehled ikon pro OPM Editor</h1>
+    
+    <div class="info-box">
+        <strong>Jak používat:</strong> Otevřete tento soubor v prohlížeči pro vizuální kontrolu všech ikon. 
+        Ikony jsou načítány přímo ze SVG souborů v této složce.
+    </div>
+
+    <div class="section">
+        <h2>Strukturální vazby</h2>
+        <p>Ikony pro strukturální vazby mezi objekty v OPM.</p>
+        
+        <div class="icon-grid">
+            <div class="icon-card">
+                <div class="icon-display">
+                    <img src="aggregation.svg" alt="Aggregation">
+                </div>
+                <div class="icon-name">aggregation</div>
+                <div class="icon-description">Vyplněný kosočtverec<br>Vztah část-celek</div>
+            </div>
+
+            <div class="icon-card">
+                <div class="icon-display">
+                    <img src="exhibition.svg" alt="Exhibition">
+                </div>
+                <div class="icon-name">exhibition</div>
+                <div class="icon-description">Prázdný čtverec<br>Vystavení vlastnosti</div>
+            </div>
+
+            <div class="icon-card">
+                <div class="icon-display">
+                    <img src="generalization.svg" alt="Generalization">
+                </div>
+                <div class="icon-name">generalization</div>
+                <div class="icon-description">Prázdný trojúhelník<br>Dědičnost (is-a)</div>
+            </div>
+
+            <div class="icon-card">
+                <div class="icon-display">
+                    <img src="instantiation.svg" alt="Instantiation">
+                </div>
+                <div class="icon-name">instantiation</div>
+                <div class="icon-description">Vyplněný kruh<br>Instance třídy</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Jak upravit ikony</h2>
+        <ol>
+            <li>Otevřete příslušný <code>.svg</code> soubor v textovém editoru nebo SVG editoru</li>
+            <li>Upravte barvy, tvary nebo velikosti podle potřeby</li>
+            <li>Uložte soubor</li>
+            <li>Obnovte tuto stránku v prohlížeči pro kontrolu změn</li>
+            <li>Restartujte OPM Editor pro načtení nových ikon</li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>Technické specifikace</h2>
+        <ul>
+            <li><strong>Velikost plátna:</strong> 24×24 px</li>
+            <li><strong>Tloušťka čar:</strong> 2 px</li>
+            <li><strong>Barva:</strong> #000000 (černá)</li>
+            <li><strong>Formát:</strong> SVG (vektorový)</li>
+        </ul>
+    </div>
+
+    <div class="info-box" style="background: #fff3cd; border-color: #ff9800;">
+        <strong>💡 Tip:</strong> Můžete otevřít SVG soubory přímo v prohlížeči (přetáhněte je do okna) 
+        a zkontrolovat, jak vypadají v různých velikostech pomocí zoom (Ctrl +/-).
+    </div>
+</body>
+</html>
+

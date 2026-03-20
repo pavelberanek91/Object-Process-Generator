@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="27" height="12" viewBox="0 0 27 12">
+  <!-- OPM šipka: horizontálně prodloužená o polovinu, bílá výplň, tenký černý obrys -->
+  <polygon points="0,0 27,6 0,12 9,6" 
+           fill="white" stroke="black" stroke-width="0.3" />
+</svg>
+
