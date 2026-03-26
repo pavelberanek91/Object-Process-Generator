@@ -32,6 +32,7 @@ class DiagramNode:
     parent_process_id: Optional[str] = None
     essence: str = "physical"
     affiliation: str = "systemic"
+    state_kind: Optional[str] = None
 
 
 @dataclass

@@ -63,6 +63,68 @@ def _split_states(s: str) -> List[str]:
     return list(dict.fromkeys([p for p in parts if p]))
 
 
+def _normalize_state_kind(kind_text: str) -> str | None:
+    """Normalizuje text druhu stavu na hodnoty initial/final."""
+    kind = (kind_text or "").strip().lower()
+    if kind in ("initial", "počáteční", "pocatecni"):
+        return "initial"
+    if kind in ("final", "cílový", "cilovy"):
+        return "final"
+    return None
+
+
+def _split_states_with_kinds(s: str) -> List[tuple[str, str | None]]:
+    """
+    Rozdělí výčet stavů a vrátí dvojice (název_stavu, druh_stavu|None).
+
+    Podporuje anotace:
+    - "born, which is initial"
+    - "narozený, který je počáteční"
+    """
+    txt = s.strip().strip(".")
+    # Unifikace spojek pro jednoduché dělení
+    txt = re.sub(r"\s+(?:or|nebo)\s+", ", ", txt, flags=re.I)
+    chunks = [c.strip().strip('"') for c in txt.split(",") if c.strip()]
+
+    out: List[tuple[str, str | None]] = []
+    i = 0
+    while i < len(chunks):
+        chunk = chunks[i]
+
+        # Varianta "state, which is initial" ještě v jednom chunku
+        m_inline = RE_STATE_KIND_ANNOTATION.match(chunk)
+        if m_inline:
+            st = _norm(m_inline.group("state"))
+            sk = _normalize_state_kind(m_inline.group("kind"))
+            if st:
+                out.append((st, sk))
+            i += 1
+            continue
+
+        # Varianta rozdělená na dva chunky: "state", "which is initial"
+        state_name = _norm(chunk)
+        state_kind = None
+        if i + 1 < len(chunks):
+            m_kind = RE_STATE_KIND_ONLY.match(chunks[i + 1])
+            if m_kind:
+                state_kind = _normalize_state_kind(m_kind.group("kind"))
+                i += 1  # spotřebovali jsme i následující chunk s anotací
+
+        if state_name:
+            out.append((state_name, state_kind))
+        i += 1
+
+    # Dedup podle názvu stavu, ponecháme první výskyt
+    dedup: List[tuple[str, str | None]] = []
+    seen = set()
+    for name, kind in out:
+        if name in seen:
+            continue
+        seen.add(name)
+        dedup.append((name, kind))
+    return dedup
+
+
 def get_or_create_state(obj, label: str):
     """
     Vrátí existující stav objektu, nebo vytvoří nový.
@@ -577,12 +639,14 @@ def build_from_opl(app, text: str):
 
         # === States - výčet možných stavů objektu ===
         # Příklad: "Order can be Pending, Confirmed or Delivered."
-        m = RE_STATES.match(line)
+        m = RE_STATES.match(line) or RE_STATES_CZ.match(line)
         if m:
             obj = get_or_create_object(m.group("obj"))
             # Vytvoří všechny uvedené stavy jako potomky objektu
-            for st in _split_states(m.group("states")):
-                get_or_create_state(obj, st)
+            for st, st_kind in _split_states_with_kinds(m.group("states")):
+                state_item = get_or_create_state(obj, st)
+                if st_kind:
+                    state_item.set_state_kind(st_kind)
             continue
 
         # === Objekt s jedním stavem - "A is state." ===
@@ -665,8 +729,10 @@ def build_from_opl(app, text: str):
         if m:
             obj = get_or_create_object(m.group("obj"))
             # Vytvoří všechny uvedené stavy jako potomky objektu
-            for st in _split_states(m.group("states")):
-                get_or_create_state(obj, st)
+            for st, st_kind in _split_states_with_kinds(m.group("states")):
+                state_item = get_or_create_state(obj, st)
+                if st_kind:
+                    state_item.set_state_kind(st_kind)
             continue
 
         # Pokud žádný regex nerozpoznal větu, přidá ji do seznamu ignorovaných

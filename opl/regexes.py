@@ -91,6 +91,10 @@ RE_INSTANCES = re.compile(r'^\s*(?P<class>.+?)\s+has\s+instances\s+(?P<insts>.+?
 # Příklad: "Order can be Pending, Confirmed or Delivered."
 RE_STATES = re.compile(r'^\s*(?P<obj>.+?)\s+can\s+be\s+(?P<states>.+?)\.\s*$', re.I)
 
+# States - česká syntaxe výčtu stavů
+# Příklad: "Objednávka může být nová, potvrzená nebo doručená."
+RE_STATES_CZ = re.compile(r'^\s*(?P<obj>.+?)\s+m[ůu]že\s+b[ýy]t\s+(?P<states>.+?)\.\s*$', re.I)
+
 # Simple "is a" - jednoduchá generalizace
 # Příklad: "Car is a Vehicle." nebo "Abs is a Braking System."
 # Poznámka: Tento regex se používá pouze pro generalizaci, kdy druhý název (super) začíná velkým písmenem
@@ -111,6 +115,23 @@ RE_CHANGES = re.compile(
 # Příklad: "Light can be On or Off."
 RE_CANBE = re.compile(
     r'^\s*(?P<obj>.+?)\s+can\s+be\s+(?P<states>.+?)\.\s*$',
+    re.I
+)
+
+# Anotace druhu stavu pro výčty stavů
+# Příklad: "born, which is initial"
+# Příklad: "narozený, který je počáteční"
+RE_STATE_KIND_ANNOTATION = re.compile(
+    r'^\s*(?P<state>.+?)\s*,\s*(?:which\s+is|kter[ýy]\s+je)\s+'
+    r'(?P<kind>initial|final|počáteční|pocatecni|cílový|cilovy)\s*$',
+    re.I
+)
+
+# Samotná část anotace druhu stavu (po rozdělení výčtu čárkami)
+# Příklad: "which is initial" nebo "který je cílový"
+RE_STATE_KIND_ONLY = re.compile(
+    r'^\s*(?:which\s+is|kter[ýy]\s+je)\s+'
+    r'(?P<kind>initial|final|počáteční|pocatecni|cílový|cilovy)\s*$',
     re.I
 )
 

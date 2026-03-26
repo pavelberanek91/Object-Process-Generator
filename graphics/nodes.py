@@ -121,16 +121,13 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         # dostupná oblast pro text (pokud má stavy, posuneme text nahoru)
         states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
         rect_for_text = self.rect()
-        # Vždy zarovnat text k horní části objektu.
-        # (dříve se používal střed, což odpovídá vašemu popisu)
-        top_offset = 4  # malé odsazení, aby text nebyl u okraje a nebyl odříznutý
-        text_alignment = Qt.AlignTop | Qt.AlignHCenter
+        # Výchozí: název uprostřed. Pokud má objekt stavy, posuň název k horní hraně.
+        text_alignment = Qt.AlignCenter
         if states:
             st_h = states[0].rect().height() + 6  # výška stavů + mezera
+            top_offset = 4  # odsazení od horního okraje (aby text nebyl přímo u okraje)
             rect_for_text = rect_for_text.adjusted(0, top_offset, 0, -st_h)
-        else:
-            # Bez stavů omezíme textovou oblast tak, aby „AlignTop“ působil s malým odsazením
-            rect_for_text = rect_for_text.adjusted(0, top_offset, 0, -top_offset)
+            text_alignment = Qt.AlignTop | Qt.AlignHCenter  # u horního konce, horizontálně uprostřed
 
         # text (tučný Arial, černý)
         font = QFont("Arial", 12, QFont.Bold)
@@ -358,10 +355,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         font = QFont("Arial", 12, QFont.Bold)
         painter.setFont(font)
         painter.setPen(Qt.black)
-        # Vždy zarovnat label k horní části elipsy.
-        # Používáme rectovou oblast, protože drawText pracuje s obdélníkem.
-        rect_for_text = self.rect().adjusted(0, 4, 0, -4)
-        painter.drawText(rect_for_text, Qt.AlignTop | Qt.AlignHCenter, self.label)
+        painter.drawText(self.rect(), Qt.AlignCenter, self.label)
 
         if option.state & QStyle.State_Selected:
             sel = QPen(Qt.blue, 2, Qt.DashLine)
@@ -414,10 +408,12 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Podporuje změnu velikosti pomocí resize handles
     - Může zobrazovat token (červený kruh) pro simulaci
     """
-    def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
+    VALID_STATE_KINDS = {"initial", "standard", "final"}
+
+    def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State", state_kind: str = "standard"):
         super().__init__(rect, parent=parent_obj)
         self.init_node("state", label)
-        self.state_type = "default"
+        self.state_kind = self._normalize_state_kind(state_kind)
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(150, 75, 0), 2))
         self.setFlags(
@@ -446,13 +442,46 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
                 pass
 
     def boundingRect(self) -> QRectF:
-        m = 6
+        m = 10
         return super().boundingRect().adjusted(-m, -m, m, m)
 
+    def _normalize_state_kind(self, state_kind: str) -> str:
+        if state_kind == "default":
+            return "standard"
+        if state_kind in self.VALID_STATE_KINDS:
+            return state_kind
+        return "standard"
+
+    def set_state_kind(self, state_kind: str):
+        normalized = self._normalize_state_kind(state_kind)
+        if normalized == self.state_kind:
+            return
+        self.state_kind = normalized
+        self.update()
+
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setPen(QPen(QColor(150, 75, 0), 2))
+        pen = QPen(QColor(150, 75, 0), 2)
+
+        # Initial stav: vykresli stín za obdélníkem.
+        if self.state_kind == "initial":
+            shadow_offset = 5
+            painter.setBrush(QColor(80, 80, 80, 120))
+            painter.setPen(Qt.NoPen)
+            painter.drawRoundedRect(
+                self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset),
+                8,
+                8,
+            )
+
+        painter.setPen(pen)
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), 8, 8)
+
+        # Final stav: dvojité ohraničení.
+        if self.state_kind == "final":
+            painter.setPen(QPen(QColor(150, 75, 0), 2))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(self.rect().adjusted(4, 4, -4, -4), 6, 6)
 
         font = QFont("Arial", 10, QFont.Bold)
         painter.setFont(font)
