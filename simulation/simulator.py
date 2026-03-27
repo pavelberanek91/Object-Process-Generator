@@ -2,6 +2,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Callable
 from PySide6.QtCore import QTimer, QObject, Signal
+from PySide6.QtWidgets import QApplication
 from simulation.petri_net import PetriNet
 from simulation.converter import build_petri_net_from_scene
 
@@ -136,15 +137,110 @@ class SimulationEngine(QObject):
         # Vybereme první přechod, který může proběhnout (lze změnit na náhodný výběr)
         transition_id = fireable[0]
         print(f"[Simulator] Firing transition: {transition_id}")
-        if self.net.fire_transition(transition_id):
-            print(f"[Simulator] Transition fired successfully")
-            self.transition_fired.emit(transition_id)
-            self.marking_changed.emit()
-            return True
-        else:
-            print(f"[Simulator] Failed to fire transition")
-            
-        return False
+
+        # 1) Najdeme výstupní místa, která patří objektům se "složenými" cílovými stavy.
+        output_places = self.net.get_output_places(transition_id)
+        output_place_objs: Dict[str, List] = {}
+        for pid in output_places:
+            place = self.net.places.get(pid)
+            if not place:
+                continue
+            if place.state_label is None:
+                continue
+            output_place_objs.setdefault(place.object_id, []).append(pid)
+
+        ambiguous_object_ids = {
+            object_id
+            for object_id, place_ids in output_place_objs.items()
+            if len(place_ids) > 1
+        }
+
+        # 2) Před samotným přesunem tokenu se uživatele zeptáme na cílové stavy.
+        #    U objektů bez více stavů nebo s jedním stavem vybereme vše.
+        selected_place_ids: set[str] = set()
+
+        # Place_id pro výstupní objekty se stavy
+        input_place_ids = set(self.net.get_input_places(transition_id))
+
+        # Připravíme automatické vybrání pro "ne-ambiguos" výstupy
+        for pid in output_places:
+            place = self.net.places.get(pid)
+            if not place:
+                continue
+            if place.state_label is None:
+                selected_place_ids.add(pid)
+                continue
+            if place.object_id not in ambiguous_object_ids:
+                selected_place_ids.add(pid)
+
+        # Cache objektových labelů pro dialog
+        if not hasattr(self, "_object_label_cache"):
+            self._object_label_cache: Dict[str, str] = {}
+
+        def get_object_label(object_id: str) -> str:
+            if object_id in self._object_label_cache:
+                return self._object_label_cache[object_id]
+            from graphics.nodes import ObjectItem
+            label = object_id
+            for item in self.scene.items():
+                if isinstance(item, ObjectItem) and getattr(item, "node_id", None) == object_id:
+                    label = getattr(item, "label", object_id)
+                    break
+            self._object_label_cache[object_id] = label
+            return label
+
+        # Pro každý ambiguos objekt spustíme dialog postupně
+        if ambiguous_object_ids:
+            from ui.dialogs import ObjectStateSelectionDialog
+
+            for object_id in sorted(ambiguous_object_ids):
+                candidate_pids = output_place_objs.get(object_id, [])
+                # Seřadíme stavy stabilně podle state_label
+                candidate_place_ids = sorted(
+                    candidate_pids,
+                    key=lambda pid: (self.net.places.get(pid).state_label or "")
+                )
+
+                state_entries = []
+                for pid in candidate_place_ids:
+                    place = self.net.places.get(pid)
+                    if not place or place.state_label is None:
+                        continue
+                    # Disabled checkbox pokud místo už má token a nebude odebráno tímto přechodem
+                    enabled = (not self.net.has_token(pid)) or (pid in input_place_ids)
+                    state_entries.append((place.state_label, pid, enabled))
+
+                if not state_entries:
+                    continue
+
+                dlg = ObjectStateSelectionDialog(
+                    object_label=get_object_label(object_id),
+                    state_entries=state_entries,
+                    parent=QApplication.activeWindow(),
+                )
+
+                from PySide6.QtWidgets import QDialog
+                if dlg.exec() != QDialog.Accepted:
+                    print(f"[Simulator] Selection cancelled for object {object_id}")
+                    return False
+
+                selected_from_dialog = dlg.get_selected_place_ids()
+                selected_place_ids.update(selected_from_dialog)
+
+        # 3) Teď teprve provedeme fázi 1 (odebrání tokenů z inputů)
+        if not self.net.activate_transition(transition_id):
+            print(f"[Simulator] Failed to activate transition: {transition_id}")
+            return False
+
+        # 4) A dokončíme fázi 2: přidáme tokeny jen do vybraných output míst
+        if not self.net.complete_transition_selected(transition_id, list(selected_place_ids)):
+            print(f"[Simulator] Failed to complete transition with selected outputs: {transition_id}")
+            return False
+
+        print(f"[Simulator] Transition fired successfully")
+        self.transition_fired.emit(transition_id)
+        self.marking_changed.emit()
+        return True
         
     def _step(self):
         """Interní krok pro timer."""

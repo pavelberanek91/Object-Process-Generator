@@ -121,7 +121,8 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         # dostupná oblast pro text (pokud má stavy, posuneme text nahoru)
         states = [ch for ch in self.childItems() if isinstance(ch, StateItem)]
         rect_for_text = self.rect()
-        text_alignment = Qt.AlignCenter  # výchozí: uprostřed
+        # Výchozí: název uprostřed. Pokud má objekt stavy, posuň název k horní hraně.
+        text_alignment = Qt.AlignCenter
         if states:
             st_h = states[0].rect().height() + 6  # výška stavů + mezera
             top_offset = 4  # odsazení od horního okraje (aby text nebyl přímo u okraje)
@@ -294,7 +295,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     
     def paint(self, painter: QPainter, option, widget=None):
         # Nastavení pera podle affiliation
-        pen = QPen(QColor(0, 0, 128), 3)
+        # Stejná tloušťka obrysu jako u ObjectItem (zelené prvky) = 2
+        pen = QPen(QColor(0, 0, 128), 2)
         if self.affiliation == "environmental":
             pen.setStyle(Qt.DashLine)
         else:
@@ -327,7 +329,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             anim_color = QColor(r, g, b)
             painter.setBrush(QBrush(anim_color))
             # Zesílíme i obrys během animace (modrý, ale trochu světlejší)
-            pen.setWidth(4)
+            # (ponecháváme stejnou tloušťku jako standardní obrys)
+            pen.setWidth(2)
             pen.setColor(QColor(0, 100, 200))
         elif state == 'fireable':
             # Zelená pro fireable (harmonizováno s Qt.green v seznamu)
@@ -407,10 +410,12 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Podporuje změnu velikosti pomocí resize handles
     - Může zobrazovat token (červený kruh) pro simulaci
     """
-    def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State"):
+    VALID_STATE_KINDS = {"initial", "standard", "final"}
+
+    def __init__(self, parent_obj: ObjectItem, rect: QRectF, label: str = "State", state_kind: str = "standard"):
         super().__init__(rect, parent=parent_obj)
         self.init_node("state", label)
-        self.state_type = "default"
+        self.state_kind = self._normalize_state_kind(state_kind)
         self.setBrush(QBrush(Qt.white))
         self.setPen(QPen(QColor(150, 75, 0), 2))
         self.setFlags(
@@ -439,13 +444,40 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
                 pass
 
     def boundingRect(self) -> QRectF:
-        m = 6
+        m = 10
         return super().boundingRect().adjusted(-m, -m, m, m)
 
+    def _normalize_state_kind(self, state_kind: str) -> str:
+        if state_kind == "default":
+            return "standard"
+        if state_kind in self.VALID_STATE_KINDS:
+            return state_kind
+        return "standard"
+
+    def set_state_kind(self, state_kind: str):
+        normalized = self._normalize_state_kind(state_kind)
+        if normalized == self.state_kind:
+            return
+        self.state_kind = normalized
+        self.update()
+
     def paint(self, painter: QPainter, option, widget=None):
-        painter.setPen(QPen(QColor(150, 75, 0), 2))
+        pen = QPen(QColor(150, 75, 0), 2)
+
+        # Initial stav: vykresli stín za obdélníkem.
+        if self.state_kind == "initial":
+            # bez stínu (jen samotný výraznější obrys)
+            pen.setWidth(3)
+
+        painter.setPen(pen)
         painter.setBrush(self.brush())
         painter.drawRoundedRect(self.rect(), 8, 8)
+
+        # Final stav: dvojité ohraničení.
+        if self.state_kind == "final":
+            painter.setPen(QPen(QColor(150, 75, 0), 2))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawRoundedRect(self.rect().adjusted(4, 4, -4, -4), 6, 6)
 
         font = QFont("Arial", 10, QFont.Bold)
         painter.setFont(font)

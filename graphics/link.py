@@ -65,6 +65,7 @@ def _load_procedural_arrow_icons():
         "consumption": "procedural_arrow",  # SVG pro consumption/result šipku
         "result": "procedural_arrow",
         "effect": "procedural_arrow",
+        "invocation": "procedural_arrow",
     }
     
     from PySide6.QtSvg import QSvgRenderer
@@ -123,6 +124,7 @@ class LinkItem(QGraphicsPathItem):
         "effect": {"arrow": "both"},
         "agent": {"circle": ("filled", "dst")},
         "instrument": {"circle": ("hollow", "dst")},
+        "invocation": {"arrow": "dst"},
         "aggregation": {"marker": ("diamond_filled", "dst")},
         "exhibition": {"marker": ("square_open", "dst")},
         "generalization": {"marker": ("triangle_open", "dst"), "arrow_flip": True},
@@ -220,7 +222,23 @@ class LinkItem(QGraphicsPathItem):
         a, b = self.endpoints()
         self._a, self._b = a, b
         self.prepareGeometryChange()
-        path = QPainterPath(a); path.lineTo(b)
+        path = QPainterPath(a)
+        if self.link_type == "invocation":
+            dx = b.x() - a.x()
+            dy = b.y() - a.y()
+            length = math.hypot(dx, dy) or 1.0
+            ux, uy = dx / length, dy / length
+            # Kolmý vektor pro zalomení do "blesku"
+            px, py = -uy, ux
+            amp = 9.0
+            # 3 úsečky: dopředu -> zpětný zlom -> rovně do cíle.
+            q1 = QPointF(a.x() + dx * 0.48 + px * amp, a.y() + dy * 0.48 + py * amp)
+            q2 = QPointF(a.x() + dx * 0.40 - px * amp, a.y() + dy * 0.40 - py * amp)
+            path.lineTo(q1)
+            path.lineTo(q2)
+            path.lineTo(b)
+        else:
+            path.lineTo(b)
         self.setPath(path)
         self._position_text()
 

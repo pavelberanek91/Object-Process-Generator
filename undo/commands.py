@@ -583,7 +583,12 @@ class PasteItemsCommand(QUndoCommand):
             for state_data in self.clipboard_data.get("nodes", []):
                 if state_data["kind"] == "state" and state_data.get("parent_id") == node_data["id"]:
                     state_rect = QRectF(state_data["x"], state_data["y"], state_data["w"], state_data["h"])
-                    state = StateItem(new_item, state_rect, state_data["label"])
+                    state = StateItem(
+                        new_item,
+                        state_rect,
+                        state_data["label"],
+                        state_data.get("state_kind", "standard"),
+                    )
                     self.id_mapping[state_data["id"]] = state.node_id
                     items_by_old_id[state_data["id"]] = state
         

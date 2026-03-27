@@ -48,6 +48,9 @@ def main():
     # Vytvoření Qt aplikace (musí být před vytvořením jakýchkoli widgetů)
     app = QApplication(sys.argv)
 
+    # Fusion styl zajišťuje konzistentní vykreslení palette/stylesheet napříč Windows tématy.
+    app.setStyle("Fusion")
+
     # Nastavení světlého vzhledu aplikace
     app.setPalette(make_light_palette())  # Aplikuje světlou barevnou paletu
     app.setStyleSheet(get_application_stylesheet())  # Aplikuje CSS styly pro toolbary a tlačítka

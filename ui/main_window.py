@@ -289,7 +289,8 @@ class MainWindow(QMainWindow):
             "y": rect.y(),
             "w": rect.width(),
             "h": rect.height(),
-            "parent_id": parent_id
+            "parent_id": parent_id,
+            "state_kind": getattr(state, "state_kind", "standard"),
         }
     
     def _serialize_link(self, link):
@@ -949,6 +950,12 @@ class MainWindow(QMainWindow):
         
         # Kontrola pro procedurální vazby
         if resolved_type in PROCEDURAL_TYPES:
+            # Invocation je speciální procedurální vazba: pouze mezi procesy.
+            if resolved_type == "invocation":
+                if src_is_process and dst_is_process:
+                    return True, ""
+                return False, "Procedurální vazba 'invocation' může být pouze mezi procesy."
+
             # Procedurální vazby NESMÍ být mezi stejnými typy uzlů (objekt-objekt nebo proces-proces)
             if src_is_object and dst_is_object:
                 return False, f"Procedurální vazba '{resolved_type}' nemůže být mezi objekty. Procedurální vazby mohou být pouze mezi procesy a objekty."

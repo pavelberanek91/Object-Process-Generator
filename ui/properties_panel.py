@@ -50,6 +50,13 @@ class PropertiesPanel(QDockWidget):
         self.cmb_affiliation.currentTextChanged.connect(self._on_affiliation_changed)
         form.addRow(self.lbl_affiliation, self.cmb_affiliation)
 
+        # druh stavu
+        self.lbl_state_kind = QLabel("State kind", self.panel_props)
+        self.cmb_state_kind = QComboBox(self.panel_props)
+        self.cmb_state_kind.addItems(["initial", "standard", "final"])
+        self.cmb_state_kind.currentTextChanged.connect(self._on_state_kind_changed)
+        form.addRow(self.lbl_state_kind, self.cmb_state_kind)
+
         # typ linku
         self.lbl_link_type = QLabel("Link type", self.panel_props)
         self.cmb_link_type = QComboBox(self.panel_props)
@@ -58,13 +65,13 @@ class PropertiesPanel(QDockWidget):
         self.cmb_link_type.addItem("─── Procedural ───")
         self.cmb_link_type.model().item(0).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
-            "consumption/result", "effect", "agent", "instrument"
+            "consumption/result", "effect", "agent", "instrument", "invocation"
         ])
         
         # Přidej oddělovač a strukturální linky
-        self.cmb_link_type.insertSeparator(5)  # Po 4 procedurálních + 1 nadpis
+        self.cmb_link_type.insertSeparator(6)  # Po 5 procedurálních + 1 nadpis
         self.cmb_link_type.addItem("─── Structural ───")
-        self.cmb_link_type.model().item(6).setEnabled(False)  # Zakáže výběr nadpisu
+        self.cmb_link_type.model().item(7).setEnabled(False)  # Zakáže výběr nadpisu
         self.cmb_link_type.addItems([
             "aggregation", "exhibition", "generalization", "instantiation"
         ])
@@ -112,6 +119,8 @@ class PropertiesPanel(QDockWidget):
         self.cmb_affiliation.hide()
         self.lbl_link_type.hide()
         self.cmb_link_type.hide()
+        self.lbl_state_kind.hide()
+        self.cmb_state_kind.hide()
         self.ed_card_src.hide()
         self.ed_card_dst.hide()
         self.lbl_card_src.hide()
@@ -160,12 +169,16 @@ class PropertiesPanel(QDockWidget):
             self.cmb_affiliation.show()
             self.cmb_affiliation.setCurrentText(it.affiliation)
         elif isinstance(it, StateItem):
-            # Stav → má label + token
+            # Stav → má label + druh + token
             print(f"[Properties] Showing properties for state {it.label}")
             self.lbl_label.show()
             self.ed_label.show()
             self.ed_label.setEnabled(True)
             self.ed_label.setText(it.label)
+
+            self.lbl_state_kind.show()
+            self.cmb_state_kind.show()
+            self.cmb_state_kind.setCurrentText(getattr(it, "state_kind", "standard"))
             
             self.lbl_token.show()
             self.chk_token.show()
@@ -287,6 +300,16 @@ class PropertiesPanel(QDockWidget):
         if isinstance(it, (ObjectItem, ProcessItem)):
             it.affiliation = text
             it.update()
+
+    def _on_state_kind_changed(self, text: str):
+        """Handler pro změnu druhu stavu (initial/standard/final)."""
+        it = self._get_selected_item()
+        if isinstance(it, StateItem):
+            it.set_state_kind(text)
+            # Synchronizace do globálního modelu.
+            if self.main_window and hasattr(self.main_window, "sync_scene_to_global_model"):
+                parent_process_id = getattr(self.main_window.view, "zoomed_process_id", None)
+                self.main_window.sync_scene_to_global_model(self.main_window.scene, parent_process_id)
     
     def _on_token_changed(self, checked: int):
         """Handler pro změnu tokenu."""

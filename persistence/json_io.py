@@ -78,7 +78,8 @@ def scene_to_dict(scene) -> Dict[str, Any]:
                             y=sr.center().y(),
                             w=sr.width(),
                             h=sr.height(),
-                            parent_id=it.node_id
+                            parent_id=it.node_id,
+                            state_kind=getattr(ch, "state_kind", "standard"),
                         ))
                         
     for it in scene.items():
@@ -152,7 +153,7 @@ def dict_to_scene(scene, data: Dict[str, Any], allowed_link) -> None:
             parent = id_to_item[n["parent_id"]]
             local_center = parent.mapFromScene(QPointF(n["x"], n["y"]))
             rect = QRectF(local_center.x()-n["w"]/2, local_center.y()-n["h"]/2, n["w"], n["h"])
-            it = StateItem(parent, rect, n["label"])
+            it = StateItem(parent, rect, n["label"], n.get("state_kind", "standard"))
             it.node_id = n["id"]
             scene.addItem(it)
             id_to_item[n["id"]] = it

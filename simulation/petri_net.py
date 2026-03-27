@@ -217,6 +217,37 @@ class PetriNet:
             self.set_token(arc.place_id, True)
                 
         return True
+
+    def complete_transition_selected(self, transition_id: str, selected_place_ids: List[str]) -> bool:
+        """
+        Dokončí přechod s možností vybrat jen některá výstupní místa.
+
+        Používá se v UI režimu, kdy uživatel rozhoduje, do kterých stavů objektu
+        se token má přesunout.
+        """
+        # Normalize vybraných place_id na existující výstupní místa
+        all_output_places = set(self.get_output_places(transition_id))
+        selected = [pid for pid in selected_place_ids if pid in all_output_places]
+        if not selected:
+            return False
+
+        # Přechod ve fázi 1 už tokeny z input míst odebere, takže "blocked" konflikty
+        # by měly typicky nastat jen tehdy, pokud už tokeny v cílových místech zůstaly.
+        # V C/E síti je to považováno za problém (nepřidáváme další token do obsazeného místa).
+        blocked_outputs = [pid for pid in selected if self.has_token(pid)]
+        if blocked_outputs:
+            return False
+
+        output_arcs = [
+            arc for arc in self.arcs
+            if arc.transition_id == transition_id and arc.arc_type == "output" and arc.place_id in all_output_places
+        ]
+        output_arcs_selected = [arc for arc in output_arcs if arc.place_id in selected]
+
+        for arc in output_arcs_selected:
+            self.set_token(arc.place_id, True)
+
+        return True
         
     def get_enabled_transitions(self) -> List[str]:
         """Vrátí seznam ID aktivních přechodů."""
