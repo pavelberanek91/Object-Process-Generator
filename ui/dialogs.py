@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QLineEdit,
+    QCheckBox,
 )
 from opl import parser as opl_parser
 from ai.nl2opl import nl_to_opl
@@ -279,6 +280,89 @@ class OPLPreviewDialog(QDialog):
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.txt.toPlainText())
+
+
+class ObjectStateSelectionDialog(QDialog):
+    """
+    Dialog pro výběr cílových stavů objektu v simulaci.
+
+    UI: název dialogu = objekt, seznam = stavy objektu s checkboxy.
+    """
+
+    def __init__(
+        self,
+        object_label: str,
+        state_entries: list[tuple[str, str, bool]],
+        parent=None,
+    ):
+        """
+        Args:
+            object_label: název objektu (title dialogu)
+            state_entries: seznam (state_label, place_id, enabled)
+            parent: Qt parent widget
+        """
+        super().__init__(parent)
+        self.setWindowTitle(object_label)
+        self._state_entries = state_entries
+        self._place_id_by_state_checkbox: dict[QCheckBox, str] = {}
+
+        ok_btn = QPushButton("OK", self)
+        cancel_btn = QPushButton("Zrušit", self)
+        ok_btn.clicked.connect(self.accept)
+        cancel_btn.clicked.connect(self.reject)
+
+        self._ok_btn = ok_btn
+
+        # Tělo dialogu
+        title_lbl = QLabel(f"Vyberte cílové stavy pro: {object_label}", self)
+        title_lbl.setWordWrap(True)
+
+        states_box = QVBoxLayout()
+        any_checked_by_default = False
+        for state_label, place_id, enabled in self._state_entries:
+            cb = QCheckBox(state_label, self)
+            cb.setEnabled(enabled)
+            cb.setChecked(enabled)  # Default: všechny povolené položky
+            if enabled:
+                any_checked_by_default = True
+            self._place_id_by_state_checkbox[cb] = place_id
+            # Při přepnutí aktualizujeme povolení OK tlačítka
+            cb.toggled.connect(self._update_ok_enabled)
+            states_box.addWidget(cb)
+
+        # Inicializace stavu OK
+        self._update_ok_enabled()
+        if not any_checked_by_default:
+            # Pokud nejsou povolené žádné volby, OK zůstává disabled.
+            pass
+
+        v = QVBoxLayout()
+        v.addWidget(title_lbl)
+        v.addLayout(states_box)
+
+        row = QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(ok_btn)
+        row.addWidget(cancel_btn)
+        v.addLayout(row)
+
+        self.setLayout(v)
+        self.resize(360, max(160, 45 * len(self._state_entries)))
+
+    def _update_ok_enabled(self, *_args):
+        selected_any = False
+        for cb in self._place_id_by_state_checkbox.keys():
+            if cb.isChecked() and cb.isEnabled():
+                selected_any = True
+                break
+        self._ok_btn.setEnabled(selected_any)
+
+    def get_selected_place_ids(self) -> list[str]:
+        selected: list[str] = []
+        for cb, place_id in self._place_id_by_state_checkbox.items():
+            if cb.isChecked() and cb.isEnabled():
+                selected.append(place_id)
+        return selected
 
 
 def show_opl_import_dialog(main_window):

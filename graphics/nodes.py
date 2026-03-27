@@ -295,7 +295,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     
     def paint(self, painter: QPainter, option, widget=None):
         # Nastavení pera podle affiliation
-        pen = QPen(QColor(0, 0, 128), 3)
+        # Stejná tloušťka obrysu jako u ObjectItem (zelené prvky) = 2
+        pen = QPen(QColor(0, 0, 128), 2)
         if self.affiliation == "environmental":
             pen.setStyle(Qt.DashLine)
         else:
@@ -328,7 +329,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             anim_color = QColor(r, g, b)
             painter.setBrush(QBrush(anim_color))
             # Zesílíme i obrys během animace (modrý, ale trochu světlejší)
-            pen.setWidth(4)
+            # (ponecháváme stejnou tloušťku jako standardní obrys)
+            pen.setWidth(2)
             pen.setColor(QColor(0, 100, 200))
         elif state == 'fireable':
             # Zelená pro fireable (harmonizováno s Qt.green v seznamu)
@@ -464,14 +466,8 @@ class StateItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
 
         # Initial stav: vykresli stín za obdélníkem.
         if self.state_kind == "initial":
-            shadow_offset = 5
-            painter.setBrush(QColor(80, 80, 80, 120))
-            painter.setPen(Qt.NoPen)
-            painter.drawRoundedRect(
-                self.rect().adjusted(shadow_offset, shadow_offset, shadow_offset, shadow_offset),
-                8,
-                8,
-            )
+            # bez stínu (jen samotný výraznější obrys)
+            pen.setWidth(3)
 
         painter.setPen(pen)
         painter.setBrush(self.brush())

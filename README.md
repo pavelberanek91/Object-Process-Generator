@@ -38,3 +38,21 @@ Zde naleznete video-tutoriál na platformě Youtube, který ukazuje způsoby ulo
 Zde naleznete video-tutoriál na platformě Youtube, který ukazuje mechanismus otevření procesu v diagramu a tvorbu dílčích podprocesů.
 
 [Tutoriál na zoomin](https://youtu.be/Pvu9YwiuJbA)
+
+## 6. Vytvoření instalačky pro macOS
+
+V repozitáři je připraven skript, který vytvoří `.app` i `.dmg` instalačku:
+
+```bash
+chmod +x scripts/build_macos_installer.sh
+./scripts/build_macos_installer.sh
+```
+
+Výstup najdete v `dist/OpenOPM-macOS.dmg`.
+
+Volitelně lze aplikaci při buildu podepsat:
+
+```bash
+export CODESIGN_IDENTITY="Developer ID Application: Tvoje Jmeno (TEAMID)"
+./scripts/build_macos_installer.sh
+```
