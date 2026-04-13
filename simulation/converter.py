@@ -78,6 +78,18 @@ def build_petri_net_from_scene(scene) -> PetriNet:
                 )
                 net.add_place(place)
                 place_map[(obj_id, state_label)] = place_id
+            # Agregát: odkazy na tělo objektu (ne na konkrétní stav) — OR s jednotlivými stavy
+            agg_id = f"place_{obj_id}__agg"
+            agg_place = Place(
+                id=agg_id,
+                label=f"{obj.label} (objekt)",
+                object_id=obj_id,
+                state_label=None,
+                is_aggregate=True,
+            )
+            net.add_place(agg_place)
+            place_map[(obj_id, None)] = agg_id
+            print(f"[Converter] Created aggregate place for object with states: {obj.label} ({agg_id})")
         else:
             # Objekt bez stavů - vytvoř jedno obecné místo
             place_id = f"place_{obj_id}"
@@ -160,6 +172,46 @@ def build_petri_net_from_scene(scene) -> PetriNet:
                 # Proces k objektu/stavu: proces vytváří objekt
                 obj, state_label = _get_object_and_state(dst)
                 if obj:
+                    # Výsledek na tělo objektu, který má stavy: jeden initial → přímo tam,
+                    # jinak výstup do všech stavů (simulátor vybere jeden přes dialog).
+                    if isinstance(dst, ObjectItem) and state_label is None:
+                        obj_states = states_by_object.get(obj.node_id, {})
+                        if obj_states:
+                            initials = [
+                                sl
+                                for sl, st in obj_states.items()
+                                if getattr(st, "state_kind", "standard") == "initial"
+                            ]
+                            if len(initials) == 1:
+                                sl = initials[0]
+                                place_id = place_map.get((obj.node_id, sl))
+                                if place_id:
+                                    arc = Arc(
+                                        place_id=place_id,
+                                        transition_id=f"transition_{src_process.node_id}",
+                                        arc_type="output",
+                                    )
+                                    net.add_arc(arc)
+                                    print(
+                                        f"[Converter] Added result arc (initial state): "
+                                        f"{src_process.label} → {obj.label} at {sl} ({place_id})"
+                                    )
+                            else:
+                                for sl in sorted(obj_states.keys()):
+                                    place_id = place_map.get((obj.node_id, sl))
+                                    if place_id:
+                                        arc = Arc(
+                                            place_id=place_id,
+                                            transition_id=f"transition_{src_process.node_id}",
+                                            arc_type="output",
+                                        )
+                                        net.add_arc(arc)
+                                        print(
+                                            f"[Converter] Added result arc (ambiguous object body): "
+                                            f"{src_process.label} → {obj.label} at {sl} ({place_id})"
+                                        )
+                            continue
+
                     place_id = _find_place_id(obj.node_id, state_label, place_map)
                     if place_id:
                         arc = Arc(

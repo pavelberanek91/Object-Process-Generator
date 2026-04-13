@@ -7,7 +7,7 @@ C/E (Condition/Event) Petriho síť je jednoduchý typ Petriho sítě, kde:
 """
 from __future__ import annotations
 from typing import Dict, Set, List, Optional, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -17,6 +17,9 @@ class Place:
     label: str  # "Object at state State" nebo "Object"
     object_id: str  # ID objektu
     state_label: Optional[str] = None  # Název stavu (None pokud objekt bez stavu)
+    # Agregát pro objekt se stavy: odkazy na tělo objektu (ne na konkrétní stav).
+    # Token je vždy nanejvýš v jednom z {agregát, stavy daného objektu}.
+    is_aggregate: bool = False
     
     def __hash__(self):
         return hash(self.id)
@@ -87,13 +90,57 @@ class PetriNet:
         return [arc.place_id for arc in self.arcs 
                 if arc.transition_id == transition_id 
                 and arc.arc_type == "output"]
-        
+
+    def get_input_test_places(self, transition_id: str) -> List[str]:
+        """Vrátí místa napojená oblouky input nebo test (spotřeba + podmínky)."""
+        return [
+            arc.place_id
+            for arc in self.arcs
+            if arc.transition_id == transition_id and arc.arc_type in ("input", "test")
+        ]
+
+    def _place_ids_for_object(self, object_id: str) -> List[str]:
+        """Všechna místa daného objektu (stavy + případný agregát)."""
+        return [pid for pid, pl in self.places.items() if pl.object_id == object_id]
+
+    def _sat_set_for_place(self, place_id: str) -> Set[str]:
+        """Místa, na kterých může ležet token, aby byl splněn vstup/test z place_id."""
+        pl = self.places.get(place_id)
+        if not pl:
+            return set()
+        if pl.is_aggregate:
+            return set(self._place_ids_for_object(pl.object_id))
+        return {place_id}
+
     def is_enabled(self, transition_id: str) -> bool:
-        """Zkontroluje, zda je přechod aktivní (všechna vstupní místa mají tokeny)."""
-        input_places = self.get_input_places(transition_id)
-        if not input_places:
-            return False  # Přechod bez vstupů není aktivní
-        return all(self.has_token(pid) for pid in input_places)
+        """Zkontroluje, zda je přechod aktivní.
+
+        Pro každý objekt na vstupu/testu: sjednocení splňovačů všech oblouků tohoto objektu
+        musí obsahovat místo s tokenem (OR mezi alternativními vstupy, např. c1 nebo c2).
+        Agregát splňuje kterékoli místo daného objektu. Různé objekty = AND.
+        """
+        input_test_arcs = [
+            arc
+            for arc in self.arcs
+            if arc.transition_id == transition_id and arc.arc_type in ("input", "test")
+        ]
+        if not input_test_arcs:
+            return False
+
+        by_object: Dict[str, List[Arc]] = {}
+        for arc in input_test_arcs:
+            pl = self.places.get(arc.place_id)
+            if not pl:
+                return False
+            by_object.setdefault(pl.object_id, []).append(arc)
+
+        for _object_id, arcs in by_object.items():
+            sat_union: Set[str] = set()
+            for arc in arcs:
+                sat_union |= self._sat_set_for_place(arc.place_id)
+            if not any(self.has_token(pid) for pid in sat_union):
+                return False
+        return True
         
     def can_fire(self, transition_id: str) -> bool:
         """Zkontroluje, zda může přechod proběhnout (je aktivní + výstupy jsou volné).
@@ -117,7 +164,7 @@ class PetriNet:
         
         # Pro input-output link pairs: zkontrolujeme, zda jsou to různá místa stejného objektu
         # Pokud ano, povolíme provedení (token bude odebrán ze vstupu před přidáním do výstupu)
-        input_places = self.get_input_places(transition_id)
+        input_places = self.get_input_test_places(transition_id)
         input_place_objects = {self.places[pid].object_id for pid in input_places if pid in self.places}
         output_place_objects = {self.places[pid].object_id for pid in output_places if pid in self.places}
         
@@ -129,25 +176,31 @@ class PetriNet:
         return False
         
     def fire_transition(self, transition_id: str) -> bool:
-        """Provede přechod (pokud je to možné) - původní jednofázová verze.
+        """Provede přechod (pokud je to možné) — jednofázové API bez výběru výstupů.
+
+        Nepoužívat u přechodů s více alternativními výstupními stavy stejného objektu
+        (tam je potřeba SimulationEngine.step() s dialogem).
         
         Returns:
             True pokud se přechod provedl, False jinak
         """
         if not self.can_fire(transition_id):
             return False
-            
-        # Odebereme tokeny ze vstupních míst (pouze z input, ne z test)
-        for arc in self.arcs:
-            if arc.transition_id == transition_id and arc.arc_type == "input":
-                self.set_token(arc.place_id, False)
-                
-        # Přidáme tokeny do výstupních míst
-        for arc in self.arcs:
-            if arc.transition_id == transition_id and arc.arc_type == "output":
-                self.set_token(arc.place_id, True)
-                
-        return True
+        output_places = self.get_output_places(transition_id)
+        by_obj: Dict[str, List[str]] = {}
+        for pid in output_places:
+            pl = self.places.get(pid)
+            if pl and pl.state_label is not None:
+                by_obj.setdefault(pl.object_id, []).append(pid)
+        if any(len(pids) > 1 for pids in by_obj.values()):
+            print(
+                "[PetriNet.fire_transition] Ambiguous state outputs for same object; "
+                "use SimulationEngine.step()."
+            )
+            return False
+        if not self.activate_transition(transition_id):
+            return False
+        return self.complete_transition_selected(transition_id, output_places)
     
     def activate_transition(self, transition_id: str) -> bool:
         """Aktivuje přechod - fáze 1: odebere tokeny ze vstupů.
@@ -155,6 +208,10 @@ class PetriNet:
         Pro input-output link pairs (stejný objekt, různé stavy) je důležité,
         že kontrolujeme jen is_enabled(), ne can_fire(), protože výstupní místa
         se uvolní až po odebrání tokenu ze vstupního stavu.
+
+        Odebrání: pro každý objekt, který má na přechodu oblouk input,
+        se odebere token z jediného místa tohoto objektu, kde token je
+        (OR mezi stavy a agregátem). Test oblouky token nemažou.
         
         Returns:
             True pokud se přechod aktivoval, False jinak
@@ -166,12 +223,27 @@ class PetriNet:
             
         # Odebereme tokeny ze vstupních míst (pouze z input, ne z test)
         input_arcs = [arc for arc in self.arcs if arc.transition_id == transition_id and arc.arc_type == "input"]
-        print(f"[PetriNet.activate_transition] Removing tokens from {len(input_arcs)} input places:")
+        by_object: Dict[str, List[str]] = {}
         for arc in input_arcs:
-            place = self.places.get(arc.place_id)
-            place_label = place.label if place else arc.place_id
-            print(f"  - {place_label} (place_id={arc.place_id})")
-            self.set_token(arc.place_id, False)
+            pl = self.places.get(arc.place_id)
+            if not pl:
+                continue
+            by_object.setdefault(pl.object_id, []).append(arc.place_id)
+
+        print(f"[PetriNet.activate_transition] Removing tokens for {len(by_object)} object(s) with input arcs:")
+        for object_id in sorted(by_object.keys()):
+            sat_union: Set[str] = set()
+            for pid in by_object[object_id]:
+                sat_union |= self._sat_set_for_place(pid)
+            holders = [pid for pid in sat_union if self.has_token(pid)]
+            if not holders:
+                print(f"[PetriNet.activate_transition] ERROR: no token for object {object_id}")
+                return False
+            pid = holders[0]
+            place = self.places.get(pid)
+            place_label = place.label if place else pid
+            print(f"  - {place_label} (place_id={pid})")
+            self.set_token(pid, False)
                 
         return True
     
@@ -197,7 +269,7 @@ class PetriNet:
             print(f"[PetriNet.complete_transition] Transition {transition_id} blocked: output places {blocked_outputs} have tokens")
             # Pro input-output link pairs: zkontrolujeme, zda jsou to různá místa stejného objektu
             # Pokud ano, měli bychom povolit dokončení (token byl odebrán ze vstupu při aktivaci)
-            input_places = self.get_input_places(transition_id)
+            input_places = self.get_input_test_places(transition_id)
             input_place_objects = {self.places[pid].object_id for pid in input_places if pid in self.places}
             output_place_objects = {self.places[pid].object_id for pid in output_places if pid in self.places}
             

@@ -80,7 +80,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
     - Bílá výplň
     - Může obsahovat stavy (StateItem jako potomky)
     - Podporuje změnu velikosti pomocí resize handles
-    - Může zobrazovat token (červený kruh) pro simulaci (pouze pokud nemá stavy)
+    - Může zobrazovat token (červený kruh) pro simulaci; u objektu se stavy jen u agregátního místa
     """
     def __init__(self, rect: QRectF, label: str = "Object", essence: str = "informatical", affiliation: str = "systemic"):
         super().__init__(rect)
@@ -93,7 +93,7 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         self.setPen(QPen(QColor(0, 128, 0), 3))  # Tmavě zelený obrys
         self._init_resize()  # Přidá resize handles
         
-        # Simulace: token v místě (pouze pro objekty bez stavů)
+        # Simulace: token v místě (objekt bez stavů nebo agregát u objektu se stavy)
         self.has_token = False
 
     def boundingRect(self) -> QRectF:
@@ -136,12 +136,15 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         painter.setPen(Qt.black)
         painter.drawText(rect_for_text, text_alignment, self.label)
         
-        # Vykresli token (červený kruh) pokud má objekt token a nemá stavy
-        if self.has_token and not states:
-            token_rect = QRectF(self.rect().right() - 16, self.rect().top() + 4, 12, 12)
+        # Token: u objektu bez stavů vpravo nahoře; u objektu se stavy jen agregát (simulace)
+        if self.has_token:
             token_red = QColor(220, 50, 50)  # Výrazná, ale ne agresivní červená
             painter.setBrush(QBrush(token_red))
             painter.setPen(Qt.NoPen)
+            if states:
+                token_rect = QRectF(self.rect().right() - 16, self.rect().bottom() - 18, 12, 12)
+            else:
+                token_rect = QRectF(self.rect().right() - 16, self.rect().top() + 4, 12, 12)
             painter.drawEllipse(token_rect)
 
         if option.state & QStyle.State_Selected:

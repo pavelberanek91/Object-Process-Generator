@@ -9,7 +9,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QMessageBox,
     QLineEdit,
-    QCheckBox,
+    QRadioButton,
+    QButtonGroup,
 )
 from opl import parser as opl_parser
 from ai.nl2opl import nl_to_opl
@@ -284,9 +285,9 @@ class OPLPreviewDialog(QDialog):
 
 class ObjectStateSelectionDialog(QDialog):
     """
-    Dialog pro výběr cílových stavů objektu v simulaci.
+    Dialog pro výběr právě jednoho cílového stavu objektu v simulaci.
 
-    UI: název dialogu = objekt, seznam = stavy objektu s checkboxy.
+    UI: název dialogu = objekt, seznam = stavy objektu s přepínači (radio).
     """
 
     def __init__(
@@ -304,7 +305,9 @@ class ObjectStateSelectionDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(object_label)
         self._state_entries = state_entries
-        self._place_id_by_state_checkbox: dict[QCheckBox, str] = {}
+        self._place_id_by_radio: dict[QRadioButton, str] = {}
+        self._button_group = QButtonGroup(self)
+        self._button_group.setExclusive(True)
 
         ok_btn = QPushButton("OK", self)
         cancel_btn = QPushButton("Zrušit", self)
@@ -314,27 +317,25 @@ class ObjectStateSelectionDialog(QDialog):
         self._ok_btn = ok_btn
 
         # Tělo dialogu
-        title_lbl = QLabel(f"Vyberte cílové stavy pro: {object_label}", self)
+        title_lbl = QLabel(f"Vyberte právě jeden cílový stav pro: {object_label}", self)
         title_lbl.setWordWrap(True)
 
         states_box = QVBoxLayout()
-        any_checked_by_default = False
         for state_label, place_id, enabled in self._state_entries:
-            cb = QCheckBox(state_label, self)
-            cb.setEnabled(enabled)
-            cb.setChecked(enabled)  # Default: všechny povolené položky
-            if enabled:
-                any_checked_by_default = True
-            self._place_id_by_state_checkbox[cb] = place_id
-            # Při přepnutí aktualizujeme povolení OK tlačítka
-            cb.toggled.connect(self._update_ok_enabled)
-            states_box.addWidget(cb)
+            rb = QRadioButton(state_label, self)
+            rb.setEnabled(enabled)
+            rb.setChecked(False)
+            self._place_id_by_radio[rb] = place_id
+            self._button_group.addButton(rb)
+            rb.toggled.connect(self._update_ok_enabled)
+            states_box.addWidget(rb)
+
+        enabled_radios = [r for r in self._place_id_by_radio if r.isEnabled()]
+        if len(enabled_radios) == 1:
+            enabled_radios[0].setChecked(True)
 
         # Inicializace stavu OK
         self._update_ok_enabled()
-        if not any_checked_by_default:
-            # Pokud nejsou povolené žádné volby, OK zůstává disabled.
-            pass
 
         v = QVBoxLayout()
         v.addWidget(title_lbl)
@@ -351,16 +352,16 @@ class ObjectStateSelectionDialog(QDialog):
 
     def _update_ok_enabled(self, *_args):
         selected_any = False
-        for cb in self._place_id_by_state_checkbox.keys():
-            if cb.isChecked() and cb.isEnabled():
+        for rb in self._place_id_by_radio.keys():
+            if rb.isChecked() and rb.isEnabled():
                 selected_any = True
                 break
         self._ok_btn.setEnabled(selected_any)
 
     def get_selected_place_ids(self) -> list[str]:
         selected: list[str] = []
-        for cb, place_id in self._place_id_by_state_checkbox.items():
-            if cb.isChecked() and cb.isEnabled():
+        for rb, place_id in self._place_id_by_radio.items():
+            if rb.isChecked() and rb.isEnabled():
                 selected.append(place_id)
         return selected
 

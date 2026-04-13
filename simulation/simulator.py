@@ -45,6 +45,21 @@ class SimulationEngine(QObject):
             
             # Najdi objekt podle object_id
             from graphics.nodes import ObjectItem, StateItem
+
+            if getattr(place, "is_aggregate", False):
+                for item in self.scene.items():
+                    if isinstance(item, ObjectItem) and item.node_id == place.object_id:
+                        items.append(item)
+                        print(
+                            f"[Simulator] Mapped aggregate place {place_id} to ObjectItem '{item.label}'"
+                        )
+                        break
+                if not items:
+                    print(
+                        f"[Simulator] WARNING: ObjectItem for aggregate place {place_id} not found"
+                    )
+                self.place_to_items[place_id] = items
+                continue
             
             # Projdi všechny top-level items ve scéně
             for item in self.scene.items():
@@ -167,11 +182,14 @@ class SimulationEngine(QObject):
             place = self.net.places.get(pid)
             if not place:
                 continue
-            if place.state_label is None:
+            # Objekt bez stavů — jedno místo (není agregát)
+            if place.state_label is None and not getattr(place, "is_aggregate", False):
                 selected_place_ids.add(pid)
                 continue
-            if place.object_id not in ambiguous_object_ids:
+            # Jeden cílový stav u daného objektu — není mezi ambiguous
+            if place.state_label is not None and place.object_id not in ambiguous_object_ids:
                 selected_place_ids.add(pid)
+                continue
 
         # Cache objektových labelů pro dialog
         if not hasattr(self, "_object_label_cache"):
