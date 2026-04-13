@@ -1,6 +1,6 @@
 #define AppId "openopm"
 #define AppName "OpenOPM Editor"
-#define AppVersion "0.0.1"
+#define AppVersion "0.0.3"
 
 [Setup]
 AppId={#AppId}

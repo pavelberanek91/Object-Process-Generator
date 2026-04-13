@@ -89,7 +89,8 @@ class ObjectItem(ResizableMixin, BaseNodeItem, QGraphicsRectItem):
         self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento objekt
         self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(QColor(0, 128, 0), 2))  # Tmavě zelený obrys
+        # Sjednoceno s výraznějším obrysem "initial" stavu (StateItem používá width=3)
+        self.setPen(QPen(QColor(0, 128, 0), 3))  # Tmavě zelený obrys
         self._init_resize()  # Přidá resize handles
         
         # Simulace: token v místě (pouze pro objekty bez stavů)
@@ -219,7 +220,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
         self.affiliation = affiliation  # "systemic" nebo "environmental"
         self.parent_process_id = None  # ID procesu, jehož in-zoom view obsahuje tento proces
         self.setBrush(QBrush(Qt.white))
-        self.setPen(QPen(Qt.black, 2))
+        # Sjednoceno s výraznějším obrysem "initial" stavu (StateItem používá width=3)
+        self.setPen(QPen(Qt.black, 3))
         self._init_resize()  # Přidá resize handles
         
         # Animace pro rozblikání při aktivaci přechodu
@@ -295,8 +297,8 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
     
     def paint(self, painter: QPainter, option, widget=None):
         # Nastavení pera podle affiliation
-        # Stejná tloušťka obrysu jako u ObjectItem (zelené prvky) = 2
-        pen = QPen(QColor(0, 0, 128), 2)
+        # Sjednoceno s výraznějším obrysem "initial" stavu (StateItem používá width=3)
+        pen = QPen(QColor(0, 0, 128), 3)
         if self.affiliation == "environmental":
             pen.setStyle(Qt.DashLine)
         else:
@@ -330,7 +332,7 @@ class ProcessItem(ResizableMixin, BaseNodeItem, QGraphicsEllipseItem):
             painter.setBrush(QBrush(anim_color))
             # Zesílíme i obrys během animace (modrý, ale trochu světlejší)
             # (ponecháváme stejnou tloušťku jako standardní obrys)
-            pen.setWidth(2)
+            pen.setWidth(3)
             pen.setColor(QColor(0, 100, 200))
         elif state == 'fireable':
             # Zelená pro fireable (harmonizováno s Qt.green v seznamu)
