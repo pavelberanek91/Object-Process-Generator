@@ -285,6 +285,34 @@ def build_petri_net_from_scene(scene) -> PetriNet:
                         arc_type="test"
                     )
                     net.add_arc(arc)
+
+        elif link_type == "invocation":
+            # Proces → proces: v síti C/E musí být mezi přechody místo (nezobrazuje se v editoru).
+            if src_process and dst_process:
+                hid = f"place_inv_{src_process.node_id}_{dst_process.node_id}"
+                pseudo_oid = f"__inv_hidden_{hid}"
+                if hid not in net.places:
+                    net.add_place(
+                        Place(
+                            id=hid,
+                            label=f"invocation {src_process.label}→{dst_process.label}",
+                            object_id=pseudo_oid,
+                            state_label=None,
+                            is_aggregate=False,
+                            is_hidden=True,
+                        )
+                    )
+                t_caller = f"transition_{src_process.node_id}"
+                t_callee = f"transition_{dst_process.node_id}"
+                net.add_arc(
+                    Arc(place_id=hid, transition_id=t_caller, arc_type="output")
+                )
+                net.add_arc(
+                    Arc(place_id=hid, transition_id=t_callee, arc_type="input")
+                )
+                print(
+                    f"[Converter] Invocation buffer {hid}: {src_process.label} → {dst_process.label}"
+                )
     
     # Zpracuj "changes from...to..." vazby
     # "Changes" vazby se vytváří jako pár: consumption na stav A a result na stav B stejného objektu

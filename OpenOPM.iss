@@ -1,6 +1,6 @@
 #define AppId "openopm"
 #define AppName "OpenOPM Editor"
-#define AppVersion "0.0.3"
+#define AppVersion "0.0.4"
 
 [Setup]
 AppId={#AppId}
@@ -12,7 +12,7 @@ DefaultGroupName=OpenOPM
 DisableProgramGroupPage=yes
 LicenseFile=LICENSE
 OutputDir=dist
-OutputBaseFilename=OpenOPM-setup
+OutputBaseFilename=OpenOPM-setup-{#AppVersion}
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=lowest

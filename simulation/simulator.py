@@ -46,6 +46,11 @@ class SimulationEngine(QObject):
             # Najdi objekt podle object_id
             from graphics.nodes import ObjectItem, StateItem
 
+            if getattr(place, "is_hidden", False):
+                self.place_to_items[place_id] = []
+                print(f"[Simulator] Hidden place (no graphics): {place_id}")
+                continue
+
             if getattr(place, "is_aggregate", False):
                 for item in self.scene.items():
                     if isinstance(item, ObjectItem) and item.node_id == place.object_id:
@@ -91,7 +96,7 @@ class SimulationEngine(QObject):
                                 print(f"[Simulator] Mapped place {place_id} to StateItem '{item.label}' (found directly)")
                                 break
                         
-            if not items:
+            if not items and not getattr(place, "is_hidden", False):
                 print(f"[Simulator] WARNING: No items found for place {place_id} (object_id={place.object_id}, state_label={place.state_label})")
                         
             self.place_to_items[place_id] = items

@@ -20,6 +20,8 @@ class Place:
     # Agregát pro objekt se stavy: odkazy na tělo objektu (ne na konkrétní stav).
     # Token je vždy nanejvýš v jednom z {agregát, stavy daného objektu}.
     is_aggregate: bool = False
+    # Skryté místo (např. buffer invokace mezi procesy) — v editoru se nevykresluje.
+    is_hidden: bool = False
     
     def __hash__(self):
         return hash(self.id)
